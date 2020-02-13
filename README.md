@@ -3,11 +3,13 @@
 - [C++笔记](#C++笔记)
 - [类](#类)
   - [构造函数与析构函数](#构造函数与析构函数)
+  - [static属性的构造函数和成员以及在private中的构造函数](#static属性的构造函数和成员以及在private中的构造函数)
+  - [常量成员函数](#常量成员函数)
 - [普通函数重载](#普通函数重载)
+- [占位参数\(也称默认实参\)](#占位参数\(也称默认实参\))
 - [inline 内联函数](#inline内联函数)
 - [enum  枚举](#enum枚举)
 - [左值右值 和 左值引用 以及 右值引用](#左值右值和左值引用以及右值引用)
-- [占位参数\(也称默认实参\)](#占位参数\(也称默认实参\))
 - 
 
 
@@ -20,7 +22,7 @@
  virtual 虚或纯虚,    friend 友元,    operator 操作符重载
 ```
 
-- ==成员函数尾部出现 const ,修饰是 this 指针.(`const 类名 *cosnt this`).==
+- ==成员函数尾部出现 const ,修饰是 this 指针,就不允许修改对象的任何数据内容.(`const 类名 *cosnt this`).==
 - 
 
 # C++笔记
@@ -52,12 +54,12 @@
 
 **三种访问级别:  `public,  private, protected`**
 
-- ==成员函数尾部出现 const ,修饰是 this 指针.(`const 类名 *cosnt this`).==
+- ==成员函数尾部出现 const ,修饰是 this 指针,也不允许修改`const`对象的任何数据内容.(`const 类名 *cosnt this`).==
+  - ==**在C++中，只有被声明为const的成员函数才能被一个const类对象调用,也就是说 const 的对象是不可以调用 非const的成员函数的.**==
 - ==this 指针原型`(类名 *const this)`;==
 - ==如果想返回一个对象的本身,在成员方法中,用 `*this` 返回.==
 - ==定义类函数的时候都会隐藏的传入一个 `this` 指针常量 隐藏参数.==
 - ==如果想对一个对象相续调用成员方法,每次都会改变对象本身,成员方法需要返回引用.==
-- ==成员函数尾部出现 const ,修饰是 this 指针.(`const 类名 *cosnt this`).==
 - ==临时创建的无名类,定义以后会立刻析构(temp(); 运行过了这一行就立刻析构,就是刚刚定义就没了).==
 - ==类的声明周期结束后会调用析构函数,如果函数中有多个类,那么会实行先入后出原则,最后构造的先析构(出栈).==
 - 
@@ -99,7 +101,7 @@
     构造函数 需要在 public 内,也可以在 private内:
 	class temp{
     public:
-    temp (int t, int a=0):t1(t),a1(a)  /*a=0 是默认参数, :后面的是初始化列表  */
+    temp (int& t, int& a=0):t1(t),a1(a)  /*a=0 是默认参数, :后面的是初始化列表  */
       {/*这里面的内容可有可无,跟正常的函数体一样*/ }
     temp():tl(0),al(0) {}     /* 重载构造函数*/
     private:
@@ -108,7 +110,7 @@
 
 拷贝构造函数:
     拷贝构造函数也在 pubilc 内:  (多多注意深拷贝和浅拷贝以及内存分配问题)
-	      temp (cosnt temp & tempthis) { 
+	      temp (cosnt temp& tempthis) { 
            this->t1 = tempthis.t1; this->a1 = tempthis.a1;   //浅拷贝
         } 
      这么写:
@@ -136,6 +138,65 @@
 
 
 
+#### static属性的构造函数和成员以及在private中的构造函数
+
+**这种写法是 `singleton` 设计模式**
+
+```c++
+class A{
+  public:
+    static  A& getInstall();   /* static 必不可少,因为返回的必须是静态对象,返回值可以当作左值来使用*/
+    int setup() { std::cout << "OK" << std::endl; return this->sum; };
+  private:
+    int sum = 0;    /* 这个数据是不是 static 无所谓的 */
+    A():sum(0){};      /* 私有构造函数 */
+    A (const A& rhs):sum(0){};   /* 私有拷贝构造函数 */
+    
+};
+
+A&
+A::getInstall(){
+ static A a; /* 返回的是一个静态对象,使用的是在private中的默认构造,进程启动时默认创建的对象,在data段 */
+ return  a;
+}
+
+
+/* 使用 */
+int main(void){
+    cout << A::getInstall().setup() << endl;  /* 直接这样使用即可, 不需要手动构造 */
+  return 0;
+}
+```
+
+
+
+#### 常量成员函数
+
+- ==成员函数尾部出现 const ,修饰是 this 指针,也不允许修改`const`对象的任何数据内容.(`const 类名 *cosnt this`).==
+
+- ==**在C++中，只有被声明为const的成员函数才能被一个const类对象调用,也就是说 const 的对象是不可以调用 非const的成员函数的.**==
+
+```c++
+class A{
+  public:
+		A(int& t):num(t) {}
+    void printf() const {std::cout << num << endl;};  
+  					/* 成员函数后面的const限制的是this指针,也就是变成了不可修改,非const对象也可以调用*/
+  
+    void pttr()     {std::cout << num << endl;};  
+           /* 这个成员函数后面没有 const 关键字, 那么 有const 修饰的A对象, 不可以调用这个函数 */
+
+  private:
+  	int num;
+};
+```
+
+
+
+
+
+
+
 
 
 ## 普通函数重载
@@ -152,6 +213,17 @@
 ```
 
 
+
+
+
+### 占位参数\(也称默认实参\)
+
+```c++
+ 占位参数:存在于函数形参列表中,主要用途是 亚元 ,其实就是一个没有任何意义的参数,为了占位置.
+    例;  
+    int fun(int a,int b,int);    // 第三个参数是用不到的,但是调用的时候还是得传递参数.
+    int fun(int a,int b,int = 0);    // 与上面相同只不过有个默认参数.
+```
 
 
 
@@ -232,17 +304,6 @@ inline   double
 - 
 
 
-
-
-
-### 占位参数\(也称默认实参\)
-
-```c++
- 占位参数:存在于函数形参列表中,主要用途是 亚元 ,其实就是一个没有任何意义的参数,为了占位置.
-    例;  
-    int fun(int a,int b,int);    // 第三个参数是用不到的,但是调用的时候还是得传递参数.
-    int fun(int a,int b,int = 0);    // 与上面相同只不过有个默认参数.
-```
 
 
 
