@@ -4,6 +4,7 @@
 - [类](#类)
   - [构造函数与析构函数](#构造函数与析构函数)
   - [static属性的构造函数和成员以及在private中的构造函数](#static属性的构造函数和成员以及在private中的构造函数)
+  - [静态成员变量和静态成员函数](#静态成员变量和静态成员函数)
   - [常量成员函数](#常量成员函数)
   - [友元](#友元)
   - [操作符重载](#操作符重载)
@@ -13,6 +14,8 @@
 - [enum  枚举](#enum枚举)
 - [左值右值 和 左值引用 以及 右值引用](#左值右值和左值引用以及右值引用)
 - [临时对象](#临时对象)
+- [new 和 delete 运算符](#new和delete运算符)
+- [nullptr 和 NULL的区别](#nullptr和NULL的区别)
 - 
 
 
@@ -25,9 +28,13 @@
  virtual 虚或纯虚,    friend 友元,    operator 操作符重载
 
 单词集合:
-      by reference  引用,          value 值,   
- pass by reference  传递引用,      calss body  类结构体
-   
+      by reference  引用,       
+      pass by reference  传递引用,
+      calss body  类结构体
+      value 值,   
+      ctor  构造函数,
+      dtor  析构函数,
+
 
 ```
 
@@ -37,8 +44,12 @@
 - ==***相同的 `class` 的各个 `objects` 互为友元.***==
 - **在类中的成员函数 结尾能加 `const` 就尽量加上.**
   - ==**结尾没有 `const` 的成员函数, 是无法让 `const` 限定创建出来对象使用的.**==
+- ==**类模板中如果出现 static 成员,那么每一种实例化都会有自己单独的一个static 的值,和其他的实例化不相同.**==
 - 
-- 
+
+
+
+
 
 # C++笔记
 
@@ -79,6 +90,8 @@
 - ==临时创建的无名类,定义以后会立刻析构(temp(); 运行过了这一行就立刻析构,就是刚刚定义就没了).==
 - ==类的声明周期结束后会调用析构函数,如果函数中有多个类,那么会实行先入后出原则,最后构造的先析构(出栈).==
 - **所有的成员函数,都拥有一个隐藏参数, 就是指向本类对象的指针 `this`**
+- **类中的 `const` 成员常量,只能通过构造函数的 初始化列表来进行初始化.**
+- 无法对 `static` 成员使用 `const` 限定符
 - 
 
 
@@ -92,7 +105,7 @@
 类 : class temp { 
     public:    // 公有成员
     private:   // 私有成员
-    protected: // 保护控制权限.在类的继承中跟private有区别,再单个类中,跟private一样.
+    protected: // 保护控制权限.在类的继承中跟private有区别,在单个类中,跟private一样.
 };
 ```
 
@@ -166,10 +179,13 @@ class A{
     int setup() { std::cout << "OK" << std::endl; return this->sum; };
   private:
     int sum = 0;    /* 这个数据是不是 static 无所谓的 */
+    static int ppt;
     A():sum(0){};      /* 私有构造函数 */
     A (const A& rhs):sum(0){};   /* 私有拷贝构造函数 */
     
 };
+
+int  A::ppt = 10;  // 类内静态数据初始化
 
 A&
 A::getInstall(){
@@ -184,6 +200,129 @@ int main(void){
   return 0;
 }
 ```
+
+
+
+### 静态成员变量和静态成员函数
+
+- **静态成员变量和静态成员函数:(类中的静态成员存在 静态区(全局区),其他的保留c原则,静态函数是文件作用域)**
+
+```c++
+static int a;   //如果a存在pubilc 中则外部可以访问,如果是private 则外部不可以访问.不可以在类内初始化
+static const int b = 10;    // 常量的静态成员是可以在类内初始化的,如果不是常量则不可以.
+static int& num(int a1,int b1);   // 这个成员函数可以访问内部静态成员,并且返回一个静态int类型的引用.
+                                          // 这样写就可以当成左值进行修改返回的内部静态成员.
+                                          
+temp::num() = 300;  // 在类外可以这样来进行对静态成员的赋值,前提是返回的是类内的静态成员.
+                                          
+int temp::a = 19;   // 在类外,在temp第一个定义之前,这样来进行初始化,pubilc和private都可以这样来初始化.
+
+/*    ==================================== ==================================== */
+
+class OnlyHeapClass
+{
+public:
+	  static OnlyHeapClass& GetInstance(){
+        static OnlyHeapClass only;          // 调用这个函数才会创建这个静态对象
+  			return only;
+    }
+    
+    int operator () (const int b) {
+        std::cout << "aa = "  << this->a << std::endl;
+        return this->a;
+    }
+    
+   void Destroy();
+private:
+	  
+       OnlyHeapClass (int b = 0):a(b) { }
+       ~OnlyHeapClass () {  }
+        int a;
+        static int ppt;   // 静态数据成员, 仅仅是声明 .
+};
+
+int  OnlyHeapClass::ppt = 10;  // 类内静态数据初始化的方式,也就是初始化.
+
+int
+main(void){
+        // 两种调用方式 (1)  . 这两种方式,都使用的是同一个对象.
+        OnlyHeapClass::GetInstance().operator()(11);
+        
+        // (2)
+        static OnlyHeapClass& pp = OnlyHeapClass::GetInstance();
+        pp(10);
+}
+```
+
+- ==**静态数据成员在 第一个对象出现前 就已经存在并初始化了.**==
+
+- **静态成员在类外,在temp第一个定义之前,pubilc和private都可以用类作用域来初始化.**
+
+- **static 成员类外存储,求类大小,并不包含在内.**
+
+- ==**静态成员是属于类的,不是属于类的对象的,对象之间共享同一个静态成员.**==
+
+- **static 成员是命名空间属于类的全局变量,存储在 data 区.**
+
+- ==**静态成员常量 可以在类内初始化,也可以在类外初始化, 但只能选择一种, 变量不可以这么做.**==
+
+  - ```c++
+    class OnlyHeapClass{
+       private:
+        static  const int cd=5;       // 这是一种初始化方式
+    };
+    const int  OnlyHeapClass::cd = 4;   // 这是另一种初始化方法, 但是两种不能同时出现
+    ```
+
+  - 
+
+- ==类内的静态数据仅仅只是声明, 脱离对象之外.==
+
+- ==**静态成员不可以使用构造来进行初始化!!**==
+
+  - ```c++
+    class OnlyHeapClass{  private:  static int ppt;  /* 只有一个静态数据成员, 仅仅是声明*/ };
+    int  OnlyHeapClass::ppt = 10;  // 类内静态数据初始化的方式
+    ```
+
+  - 
+
+- ==**静态成员变量只能使用静态成员函数来访问和修改.(不是初始化)**==
+
+  - ```c++
+    class OnlyHeapClass{  
+      public:
+          static  int& ret() const { return ppt; } // 该函数可以返回静态数据成员
+          int& nst_ret() const { return ppt;  }   // 这段代码会报错, 不可以返回静态成员.
+      private: 
+          static int ppt;  /* 只有一个静态数据成员, 仅仅是声明 */ 
+    };
+    int  OnlyHeapClass::ppt = 10;  // 类内静态数据初始化的方式
+    
+    int main(){
+    	  std::cout << OnlyHeapClass::ret();
+    }
+    ```
+
+  - 
+
+- ==**static 成员函数,只能返回static成员变量,无法返回非static的成员.**==
+
+- ==调用静态函数成员的方法有两种, 一个是对象调用, 一个是类名调用==
+
+  - ```c++
+    class OnlyHeapClass{
+      public:
+      	static int& ret() {  return a; } // 可以使用对象或类型调用
+               int& nst() {  return b; } // 只可以通过对象调用.而且不可以返回 a 成员
+    	private:
+      	static int a;
+               int b;
+    ```
+
+- ==**类模板中如果出现 static 成员,那么每一种实例化都会有自己单独的一个static 的值,和其他的实例化不相同.**==
+
+
 
 
 
@@ -206,6 +345,10 @@ class A{
   	int num;
 };
 ```
+
+
+
+
 
 
 
@@ -392,7 +535,7 @@ operator-= (const temp& p){
 /* = 等号 运算符重载, 注意内存空间和自身赋值, 还有深拷贝和内存泄漏 */
   inline temp& 
   temp::operator= (const temp& t){    // 可连续赋值
-    if (this == &t){   // 放置自身赋值,需要判断地址,( temp t =  temp t );
+    if (this == &t){   // 防止自身赋值,也防止自身释放,必须要写,需要判断地址,( temp t =  temp t );
     	return *this;
     }
     this->a = t.a;
@@ -604,6 +747,88 @@ print (const A& a){
 	return  A (a);    //这个函数返回的就是一个匿名的临时对象, 
 }
 ```
+
+
+
+## new和delete运算符
+
+- **`new` 和 `delete`   (是运算符,而不是函数,运算符比函数执行效率高)**
+- **`malloc()` 和 `free()`  是函数,标准库,来自stdlib.h   malloc.h**
+- **`new` 和 `delete`   是操作符, c++整合进入标准库的  iostream**
+- ==`new` 和 `malloc` 的区别:==
+  - **`new`在实现中会调用 `malloc` 并且由编译器安插调用构造函数的代码**
+  - **`new` 失败 会抛出异常,  `malloc` 失败则返回0**
+  - ==`new` 在初始化对象的时候可以触发构造函数,但是 `malloc` 却不可以初始化对象,而且这属于c 并不应该用在c++中.==
+- ==`delete` 和 `free` 的区别:==
+  - **`delete` 在释放类的时候会自动调用析构函数,防止内存泄漏, 但是`free()`是不会调用析构,类里面申请的独立空间就会无法释放.**
+- ==**new 和 delete 的调用关系**==
+  - `new` -> `operator new`  -> `malloc`
+  - `delete` ->  `operator delete`  -> `free`
+- ==**`new` 做了三件事: `string* ps = new string("hello");`**==
+  - **1). 找一块内存,并返回地址. `void* mem = operator new(sizeof( string ) ); 分配内存`**
+  - **2). 将这块内存转换为需要的类型.  `ps = static_cast<string*>(mem); //转换类型 `**
+  - **3).在这块内存上构建类对象.也就是调用构造函数. `ps->string::string("hello"); //编译器才可以调用的构造函数`**
+- ==**`delete` 做了两件事: `delete ps;`**== 
+  - **1). 先进行析构函数的调用(如果是数组,则每个元素都会唤醒析构函数.). `string::~string(ps);`**
+  - **2).释放内存. `operator delete(ps);  该函数内部调用的是 free(ps);`**
+- ==**如果使用 `string *p = new[10];` 来分配一个数组, 但是却使用 `delete p;` 来进行释放,那么会发生下面的问题:**==
+  - **仅仅会唤醒一次析构函数, 删除掉最前面的一个元素,其他的元素内存块会被删除,但里面记录的是指针,并不是真正的数据.**
+  - **会造成内存泄漏.**
+- 对象在创建的同时要自动执行构造函数， 对象消亡之前要自动执行析构函数。由于malloc/free 是库函数而不是运算符，不在编译器控制权限之内，不能够把执行构造函数和析构函数的任务强加malloc/free。 
+- **有一个 new 操作就需要一个 delete , 有一个 new[] 就需要 delete[].  (运算规则)**
+- ==**使用 `new` 分配的内存块是以 16的倍数单位进行补全, 并在头部和尾部各添加额外的4字节标识字段.**==
+  - **如果 一个类对象需要的内存为 12字节,则系统会给分配 `(12+4+4+12)=32` 字节,`(如果是调试模式下,会更大,再+8, 因为会存在调试信息.)`.**
+  - **如果一个类对象需要的内存为4字节, 则系统会分配 `(4+8+4)=16`字节.`(填充字段最后计算)`**
+  - **如果分配的是一个数组(无论类型), 那么还会多一个4字节的字段,记录了数组中元素的个数,就在元素内存段开头位置的上面.**
+    - **对象占去12字节, 填充占4字节,填充到16的倍数. **
+    - **剩下8字节分为两部分.每部分4字节, 分布在内存块的最开始和最结尾**
+      - ==**里面记录了该内存块是否 已分配或已回收, 和该内存块的总长度( 这个字段是给 `malloc和free`函数看的.)**==
+        - ==该字段存储值的规范必须是16的倍数,存储的值也是16进制的.==
+          - ==当最后一位为0时, 代表该字段以释放并归还给了系统,可以重新使用,进行内存分配.==
+          - ==当最后一位为1时, 代表该字段已经被分配,也就是正在使用.不可以进行二次分配内存.==
+          - ==如果存储的是数组,那么该字段的值会向左移动一位`(字节)`,并且最后一位字节设置为`h`.==
+
+```c++
+	  int *p = new int;    //标准范式
+    int *a = new int (10);   //创建一个int类型的a 赋值为10
+    int *array = new int[10];    // 创建一个有10个元素的int类型数组
+    temp * tp = new temp(10,10);     // 在堆上申请空间,使用new 并且可以调用构造函数. 
+                                     // 实际就是定义了一个类的指针,并且使用构造函数初始化了.
+    temp * tp1 = new temp[5];     // 创建了一个类的数组指针,并且其中有5个元素,每个元素都指向一个类.
+                                  // 使用默认构造函数.
+    
+    delete p;        // 释放一个int
+    delete[] array;    //释放一个数组,必须要这样写
+    delete tp;     // 释放一个类的指针,并且触发析构函数
+```
+
+- 
+- 
+
+
+
+## nullptr和NULL的区别
+
+- **在C++中, NULL 这个宏等于 一个整形值 0**
+  - 如果出现重载或者模版推导的时候, 编译器就无法给出正确答案了.
+  - 在C语言中，允许 void* 类型隐式转换为任意指针类型，而C++中不允许这样的强制类型转换，但是可以为任意类型的指针赋0值，因此，在C++中将NULL 定义为0
+- **nullptr并非整型类别，甚至也不是指针类型，但是能转换成任意指针类型, 是个纯右值。nullptr的实际类型是`std:nullptr_t`**
+  - `is_null_pointer()`  该类模版用于 检查类型是否为 `std::nullptr_t`   ;(C++14)
+- **应该使用 `nullptr` 而非 `NULL`, 尤其是模版和函数重载时.**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
