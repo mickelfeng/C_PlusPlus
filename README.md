@@ -184,7 +184,7 @@
 
 ```c++
 enum Season{ ziro = 0, one , two };   //声明
-    
+enum ppd { cmd_l , cmd_t };  // 默认 cmd_l = 0 ,cmd_t= 1
 		int main(void)
     {
         enum Season vod = one;  // 定义了 vod 等于 one 代表的值 也就是1
@@ -194,8 +194,6 @@ enum Season{ ziro = 0, one , two };   //声明
         }
     }
 ```
-
-
 
 
 
@@ -228,7 +226,11 @@ enum Season{ ziro = 0, one , two };   //声明
     public:    // 公有成员
     private:   // 私有成员
     protected: // 保护控制权限.在类的继承中跟private有区别,在单个类中,跟private一样.
+
+    explicit temp( int a ) {}   //不允许使用隐式类型转换来调用构造函数, (显示构造函数)
 };
+
+
 ```
 
 > - ==构造函数和析构函数都不允许有返回值.(定义的时候都没有那么就不应该有)==
@@ -253,7 +255,7 @@ enum Season{ ziro = 0, one , two };   //声明
     构造函数 需要在 public 内,也可以在 private内:
 	class temp{
     public:
-    temp (int& t, int& a=0):t1(t),a1(a)  /*a=0 是默认参数, :后面的是初始化列表  */
+    explicit temp (int& t, int& a=0):t1(t),a1(a)  /*a=0 是默认参数, :后面的是初始化列表  */
       {/*这里面的内容可有可无,跟正常的函数体一样*/ }
     temp():tl(0),al(0) {}     /* 重载构造函数*/
     private:
