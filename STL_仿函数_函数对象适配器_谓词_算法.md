@@ -48,8 +48,7 @@
   - [queue赋值操作API](#queue赋值操作API)
   - [queue大小操作API](#queue大小操作API)
 - [list](#list)
-
-  - [list构造函数API](#list构造函数API)
+- [list构造函数API](#list构造函数API)
   - [list数据元素插入和删除操作API](#list数据元素插入和删除操作API)
   
     - [list大小操作API](#list大小操作API)
@@ -79,8 +78,23 @@
   - [map/multimap经典查找范例](#map/multimap经典查找范例)
   - [map/multimap排序范例:重要](#map/multimap排序范例:重要)
 - [函数对象-仿函数](#函数对象-仿函数)
-- [谓词](#谓词)
-- 
+  - [谓词](#谓词)
+  - [函数对象适配器](#函数对象适配器)
+    - [函数对象适配器范式:仿函数适配器 bind1st, bind2nd 绑定适配器](#函数对象适配器范式:仿函数适配器bind1st,bind2nd绑定适配器)
+    - [函数对象适配器范式:伪函数适配器not1,not2取反适配器,bool是返回值](#函数对象适配器范式:伪函数适配器not1,not2取反适配器,bool是返回值)
+    - [函数对象适配器范式:把普通函数适配成函数对象bind2nd和ptr_fun](#函数对象适配器范式:把普通函数适配成函数对象bind2nd和ptr_fun)
+    - [函数对象适配器范式:调用类自己提供的打印函数](#函数对象适配器范式:调用类自己提供的打印函数)
+- [查找算法](#查找算法)
+  - [常用遍历算法](#常用遍历算法)
+  - [常用排序算法](#常用排序算法)
+  - [常用拷贝和替换算法](#常用拷贝和替换算法)
+  - [常用算数生成算法](#常用算数生成算法)
+  - [常用集合算法](#常用集合算法)
+  - 
+
+
+
+
 
 
 
@@ -1921,7 +1935,820 @@ int main(void){
 
 
 - **内建函数对象:  ` <functional>`**
-  - **STL 内建了一些函数对象, 分为,算术类函数对象, 关系运算类对象, 逻辑运算类仿函数.**
+  - **STL 内建了一些函数对象, 分为:**
+    - **算术类函数对象**
+    - **关系运算类对象**
+    - **逻辑运算类仿函数**
   - **这些仿函数产生的对象,用法和一般函数完全相同,当然我们还可以产生无名的临时对象来履行函数功能.**
-  - **使用内建对象需要引用头文件, `<functional>`**
+  - **使用内建对象需要引用头文件 `<functional>`**
+
+```c++
+ 6 个算数类函数对象, 除了negate是一元运算,其他都是二元运算.
+    template<class T> T plus<T,T>   //加法仿函数
+    template<class T> T minute<T,T>  //减法仿函数
+    template<class T> T multiplies<T,T>  //乘法仿函数
+    template<class T> T divides<T,T>  // 除法仿函数
+    template<class T> T modulus<T,T>  // 取模仿函数
+    template<class T> T negate<T>  // 取反仿函数
+--------------------
+ 6 个关系运算类函数对象,每一种都是二元运算:
+    template<class T> bool equal_to<T,T>  //等于
+    template<class T> bool not_equal_to <T,T> // 不等于
+    template<class T> bool greater<T,T> // 大于
+    template<class T> bool greater_equal<T,T>  // 大于等于
+    template<class T> bool less<T,T> //小于
+    template<class T> bool less_equal<T,T>  //小于等于
+--------------------
+ 3 个逻辑运算类运算函数,not 为一元运算,其余为二元运算.
+    template<class T> bool logical_and<T,T>  //逻辑与
+    template<class T> bool logical_or<T,T>  //逻辑或
+    template<class T> bool logical_not<T,T>  //逻辑非
+--------------------
+
+
+ 用法: 
+ 	plus<int>myplus;
+	cout << myplus(10,20) << endl;
+            // 会输出 30 
+```
+
+- **跟自己自定义的函数对象一样,该怎么用就怎么用**
+
+
+
+
+
+## 函数对象适配器
+
+- 函数对象适配器是完成一些配接工作
+  - **这些配接包括绑定(bind), 否定(negate), 以及对 一般函数 或  成员函数 的 修饰,使其成为 函数对象**
+- **重点掌握函数对象适配器.**
+
+```c++
+    bind1st : 将参数绑定为函数对象的第一个参数
+    bind2nd : 将参数绑定为函数对象的第二个参数
+    not1   : 对一元函数对象取反
+    not2   : 对二元函数对象取反
+    ptr_fun : 将普通函数修饰成函数对象
+    mem_fun : 修饰成员函数
+    mem_fun_ref : 修饰成员函数
+
+  预定以函数对象
+    仿函数适配器 bind1st , bind2nd
+    仿函数适配器 not1 not2
+    仿函数适配器 ptr_fun
+    成员函数适配器 mem_fun , mem_fun_ref
+      
+    // bind1st bind2nd 区别是:
+    // bind1st : 将addNum 绑定为函数对象的第一个参数.
+    // bind2nd : 将addNum 绑定为函数对象的第二个参数.
+```
+
+
+
+**有的时候使用需要继承 `binary_function` 这个基类. 也可能会继承其他的基类, 一切看范式.**
+
+
+
+### 函数对象适配器范式:仿函数适配器bind1st,bind2nd绑定适配器
+
+```c++
+//---------------------------------------------------------------------
+// 这里继承了一个父类   , 这个父类是模板,给了他三个参数 ,二元的使用binary_function
+struct MyPrint :public binary_function<int, int,void> { //int,int,void 两个参数,一个返回值
+    void operator()(int v, int t)const {
+        cout << "v " << v << ", t" << t << endl;
+        cout << "v + t  " << v + t << endl;
+    }
+};
+
+// 仿函数适配器 bind1st  bind2nd  绑定适配器
+void test01() {
+    vector<int > v;
+    for (int i = 0; i < 10; i++) {  //循环赋值,压入容器
+        v.push_back(i);
+    }
+    int addNum = 200;
+    for_each(v.begin(), v.end(), bind2nd(MyPrint(), addNum));
+    for_each(v.begin(), v.end(), bind1st(MyPrint(), addNum));
+    // 绑定适配器  将一个二元的函数对象,转变成一元的函数对象.
+    // 因为for_each()需要回调函数有一个参数,但是MyPrint 有两个参数
+    // bind1st 把这个函数变成了一元函数,来给for_each()调用,
+    // 然后把bind1st内的第二个值在传入到函数内,变成第二个参数.
+    // 随后函数就会正常的被调用.
+
+    // bind1st bind2nd 区别是:
+    // bind1st : 将addNum 绑定为函数对象的第一个参数.
+    // bind2nd : 将addNum 绑定为函数对象的第二个参数.
+}
+```
+
+
+
+
+
+### 函数对象适配器范式:伪函数适配器not1,not2取反适配器,bool是返回值
+
+```c++
+// 伪函数适配器  not1  not2 取反适配器   , bool 是返回值
+
+class Myprint02 {
+public:
+    void operator()(int v) {
+        cout << v << " ";
+    }
+};
+
+class Mycompare :public binary_function<int, int, bool> { //int,int,bool 两个参数,一个返回值
+public:
+    bool operator()(int v1, int v2)const {  //也可以叫二元谓词,因为返回值是布尔
+        return v1 > v2;                 // 凡是涉及到排序 全都是返回布尔类型
+    }
+};
+
+struct MyGreter5 : public unary_function<int, bool> { //一元的使用unary_function
+    bool operator()(int v)const {
+        return v > 5;
+    }
+};
+
+//---------------------------------------------------------------------
+// 伪函数适配器  not1  not2 取反适配器
+void test02() {
+    srand((unsigned) time(nullptr)); //初始化随机种子
+    vector<int > v;
+    for (int i = 0; i < 10; i++) {  //循环赋值,压入容器
+        v.push_back(rand() % 100 + 1);
+    }
+    for_each(v.begin(), v.end(), Myprint02());  // 排序之前 打印一次
+    cout << endl;
+    sort(v.begin(), v.end(), not2(Mycompare()));  //使用匿名类对象来排序, 伪函数
+    for_each(v.begin(), v.end(), Myprint02());  // 排序之后 打印一次
+    cout << endl;
+
+    // not1  not2
+    // 如果对二元谓词取反, 用not2
+    // 如果对一元谓词取反, 用not1
+
+    vector<int>::iterator it = find_if(v.begin(), v.end(), not1(MyGreter5()));
+    //从迭代器区间查找大于5的值,但是取反了,就只能查找小于等于 5的值, 返回一个迭代器
+
+    if (it == v.end()) {
+        cout << "没有找到" << endl;
+    }
+    else {
+        cout << *it << endl;
+    }
+
+   // cout << *it << endl;
+
+}
+```
+
+
+
+### 函数对象适配器范式:把普通函数适配成函数对象bind2nd和ptr_fun
+
+```C++
+void MyPrint03(int val, int val2) {   //函数也可以用来打印和回调函数,但是无法进行绑定
+    cout << "vla2 :  " << val2 << ", val :" << val << " ";
+    cout << endl;
+}
+
+void test03() {
+    vector<int> v;
+    for (int i = 0; i < 10; i++) {
+        v.push_back(i);
+    }
+
+    // 把普通函数适配成函数对象
+    for_each(v.begin(), v.end(), bind2nd(ptr_fun(MyPrint03), 10));
+    // 普通函数是无法使用 bind2nd 这个函数对象的,必须要经过 ptr_fun来转化
+}
+```
+
+
+
+### 函数对象适配器范式:调用类自己提供的打印函数
+
+```c++
+// 如果容器中存放的 对象 或者 对象指针, 我们for_each 算法打印的时候,调用类自己提供的打印函数.
+class Persion {
+public:
+    Persion() {}
+    Persion(int age, int id) :age(age), id(id) {}
+    void show() {
+        cout << "age: " << age << ", id " << id << " aaa " << endl;
+    }
+public:
+    int age;
+    int id;
+};
+
+void test04() {
+    vector<Persion> v;
+    Persion p1(10, 20), p2(30, 40), p3(50, 60);
+    v.push_back(p1);
+    v.push_back(p2);
+    v.push_back(p3);
+
+    // 格式: &类名::函数名
+    for_each(v.begin(), v.end(), mem_fun_ref(&Persion::show)); //调用了类中函数来进行输出
+
+    vector<Persion*> v1;
+    v1.push_back(&p1);
+    v1.push_back(&p2);
+    v1.push_back(&p3);
+
+
+    for_each(v1.begin(), v1.end(), mem_fun(&Persion::show)); // 指针和 普通对象是不同的格式
+
+    // mem_fun_ref  和 mem_fun 的区别是:
+    //  如果存放的是对象指针则 使用 mem_fun
+    //  如果使用的是对象  使用mem_fun_ref
+    //  除了这两个不同外, 括号内的 内容完全不变
+}
+```
+
+
+
+
+
+
+
+
+
+# 查找算法
+
+> **常用的查找算法: `<algorithm>`** 
+
+- **`find()` 返回一个迭代器,找到则返回找到的, 没有找到就返回`.end();`**
+
+- **`find_if()`  会根据我们的条件(函数), 返回第一个满足条件的元素的迭代器;需要我们来自定义查找的范围和查找的回调函数,他会返回一个bool值.**
+
+- **`binary_search()`  二分查找法,它只会返回一个bool值 ,告诉你有还是没有(只支持自带排序和带排序算法的容器)**
+
+- **`adjacent_find()` 查找相邻重复的元素, 比如 1 2 2 3 4 3 , 他会把 第二个2 的迭代器返回,4 后面的 3 不符合相邻重复的条件.**
+
+- **`count count_if()` 查找元素出现比 第三个参数大的元素的个数.只不过一个需要提供回调函数而已**
+
+  
+
+```c++
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <functional>
+using namespace std;
+// find  最常用的一种
+void test02(){
+    vector<int >v1;
+    for(int i = 0 ; i < 10 ; i++){
+        v1.push_back(i);
+    }
+    
+    vector<int>::iterator vitBegin = v1.begin();
+    vector<int>::iterator vitEnd   = v1.end();
+     
+    // find() 返回一个迭代器,找到则返回找到的, 没有找到就返回end();
+    vector<int>::iterator ret = find(vitBegin,vitEnd ,5);
+    if(ret != v1.end()){
+        cout << "找到了 " << *ret  << endl;
+    }else{
+        cout << "没找到" << endl;
+    }
+}
+
+
+/*=====================================================================================*/
+
+class Person{
+public:
+    Person(int age,int id):age(age),id(id){}
+    bool operator==(const Person& p)const{   // 返回的是bool 类型 , 为什么这么写,去看find()源代码
+        return p.id == this->id && p.age == this->age;  // 这里是判断条件, 多多注意 const
+    }
+public:
+    int id ;
+    int age;
+};
+
+void test03(){
+    vector<Person>v1;
+    Person p1(10,20),p2(30,40);
+    
+    v1.push_back(p1);
+    v1.push_back(p2);
+    
+    vector<Person>::iterator vitBegin = v1.begin();
+    vector<Person>::iterator vitEnd   = v1.end();
+    
+    vector<Person>::iterator ret = find(vitBegin,vitEnd,p1);
+                              // find(1,2,3); 在1和2的范围内找到3这个元素
+    if(ret != v1.end()){
+        cout << "找到了"   << endl;
+    }else{
+        cout << "没找到"  << endl;
+    }
+    
+}
+
+/*=====================================================================================*/
+
+
+//find_if的回调函数,他每次都会把值仍到这里来,
+bool MySearch(int val){
+    return val > 5;  //只要我们给他返回true,那么他就认为找到了
+};
+
+//这个是 count_if 的回调函数,统计大于5的元素的个数, 返回的是bool
+bool MySearch2(int val){
+    return val > 5;
+}
+
+// binary_search  二分查找法,它只会返回一个bool值 ,告诉你有还是没有(只支持自带排序和带排序算法的容器)
+// adjacent_find 查找相邻重复的元素, 比如 1 2 2 3 4 3 , 他会把 第二个2 的迭代器返回,4 后面的 3 不符合条件.
+// find_if  需要我们来自定义查找的范围和查找的回调函数,他会返回一个bool
+// count 和 count_if
+void test04(){
+    vector<int >v1;
+    for(int i = 0 ; i < 10 ; i++){
+        v1.push_back(i);
+        if (i==5)
+            v1.push_back(i);
+    }
+    v1.push_back(5);  // 特意多添加了一个5的值
+    
+    vector<int>::iterator  itBegin = v1.begin();
+    vector<int>::iterator  itEnd   = v1.end();
+    
+    bool ret = binary_search(itBegin, itEnd, 6);
+         // 在 itBegin和 itEnd 范围内寻找 6个元素. 找到返回 true ,否则 false
+    
+    if(ret){
+        cout << "找到了"  << endl;
+    }else{
+        cout << "没找到" << endl;
+    }
+    
+// 上面的 迭代器不应该继续使用, 应该重新进行初始化,binary_search() 会修改它们的值
+    itBegin = v1.begin();
+    itEnd   = v1.end();
+    
+    vector<int>::iterator pos = adjacent_find(itBegin, itEnd); // 这里不需要第三个值
+    // 只是查找相邻的,  如果两个数值相等, 但是他们不相邻,那么就不回返回他们的迭代器
+    // 例如 , 1, 2, 4, 5, 5, 6   .那么返回的是 第一个5, 上个元素是4, 下个元素是第二个5
+    
+    if(pos != v1.end()){
+        cout << "找到了相邻重复元素!  " << *pos <<" -- " << *(pos-1) << "  ++ " << *(pos+1) <<endl;
+    }else{
+        cout << "没找到相邻重复元素" << endl;
+    }
+    
+// 上面的 迭代器不应该继续使用, 应该重新进行初始化,adjacent_find() 会修改它们的值
+    itBegin = v1.begin();
+    itEnd   = v1.end();
+    
+    
+// find_if  会根据我们的条件(函数), 返回第一个满足条件的元素的迭代器, 也就是函数设定的大于5的值.
+    vector<int>::iterator it = find_if( itBegin, itEnd ,MySearch);
+    if(it  != v1.end()){
+        cout << "找到了"  << *it <<  endl;  //这里回返回指向元素6的迭代器,因为我的回调函数写的是大于5的数
+    }else{
+        cout << "没找到"  << endl;
+    }
+
+// 上面的 迭代器不应该继续使用, 应该重新进行初始化,adjacent_find() 会修改它们的值
+    itBegin = v1.begin();
+    itEnd   = v1.end();
+    
+// count , count_if 都是查找元素出现比 第三个参数大的元素的个数.只不过一个需要提供回调函数而已
+    long num = count(itBegin, itEnd, 9);
+    cout <<"9出现的次数 : "  << num << endl;
+    
+// 上面的 迭代器不应该继续使用, 应该重新进行初始化,adjacent_find() 会修改它们的值
+    itBegin = v1.begin();
+    itEnd   = v1.end();
+    num = 0;
+    
+    //统计大于5的 元素的总个数
+    num = count_if (itBegin, itEnd, MySearch2);
+    cout << "大于5的元素出现的个数" << num << endl;
+}
+
+int
+main(void){
+    test04();
+}
+```
+
+
+
+
+
+## 常用遍历算法
+
+> **常用的遍历算法: `<algorithm>`**
+
+- **`for_each(迭代器,迭代器,回调函数) ;  // 都写烂了`**
+- **`transform( 迭代器, 迭代器, 迭代器,回调函数);   // 把两个迭代器之间的内容全部搬运到另一个容器中,注意这里是不会给目标容器分配内存空间的, 所以我们要提前分配好内存.  他会返回目标容器的迭代器`**
+
+
+
+```c++
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <functional>
+using namespace std;
+#include <algorithm>
+
+
+struct MyPlus{
+    int operator()(int val){  // 因为 vector 这个容器的类型是 int 那么这里也要写int
+        return val;   // 搬运容器,传入的是 v1的内容, 返回值是给 v2的,而且这里还可以进行修改
+    }
+};
+
+void MyPrint(int val){ // 用来给for_each 打印的
+    cout << val << " ";
+}
+
+//transform  将一个容器的元素 搬运到 另一个容器中
+void test01(){
+    vector<int> v1;
+    vector<int> v2;
+    v2.resize(100);  // 这里必须用reszie扩张空间,等待存储v1的元素,如果缺少这步,则会出现内存崩溃.
+                    // 绝对不能使用reserve ,因为使用之后只能通过 push_back 来添加新值
+    
+    //将 v1 进行赋值和添加元素
+    for(int i = 0 ; i< 10 ; i++){
+        v1.push_back(i);
+    }
+    
+    // 原容器的迭代器,目标容器的迭代器,后面的是伪函数,用来搬运的
+    transform(v1.begin(), v1.end(), v2.begin(),MyPlus());
+    
+    for_each(v2.begin(), v2.end(), MyPrint);
+    cout << endl;
+}
+
+int
+main(){
+    test01();
+}
+```
+
+
+
+
+
+## 常用排序算法
+
+> 常用的排序算法  容器 `<algorithm>`
+
+- **`sort(iterator beg,iterator end,_callback);`**
+  - **`//对指定范围内的元素进行排序,默认是由小到大, 两个迭代器,  一个回调谓词函数(返回bool类型的函数对象). (要求容器必须支持随机访问,否则无法使用)`**
+
+- **`random_shuffle(iterator beg,iterator end);`**
+  - **`//对指定范围内的元素随机调整次序,两个迭代器 (就算是自定义类型,也不需要另外的排序函数),仅仅只需要迭代器 (要求容器必须支持随机访问,否则无法使用`**
+
+- **`reverse(iterator beg, iterator end);`**
+  - **`//反转指定范围的元素. 两个迭代器,就算是自定义类型,也不需要另外的排序函数,(要求容器必须支持随机访问,否则无法使用)`**
+
+- **`merge(iterator beg1,iterator end1,iterator beg2,iterator end2,iterator dest);`**
+  - **`//两个容器元素合并放入到另一个容器中.`**
+  - **`// 前面四个迭代器代表两个容器,而且这两个容器必须是有序的(比如map,set),  一定要把第五个接受元素的迭代器 使用 resize() 来重新划分空间.`**
+  - **`不支持随机访问的容器也可以使用这个算法,但是要先排序,比如 list.sort();`**
+
+- ==**如果想让 `list` 容器来实现反转指定元素和随机排序之类的时候,那就只能自己写算法来解决了.**==
+
+
+
+```c++
+#include <iostream>
+#include <algorithm>
+#include <list>
+#include <vector>
+using namespace std;
+//merge 算法 整合两个容器的元素,排序后放入第三个容器中 和 sort 算法范例: (虽然都写烂了)
+struct MyPrint01{
+    void operator()(int v){
+        cout << v << " ";
+    }
+};
+struct MyCompare01{  //排序 sort 时,想自定义排序元素的时候使用的自定义伪函数
+    bool operator()(int v1,int v2){
+        return v1 > v2;
+    }
+};
+
+void test01(){
+    vector<int>v1;     // 支持随机访问可以用
+    vector<int>v2;
+    list<int>l3;    // 不支持随机访问的容器
+    
+    srand((unsigned int)time(nullptr)); //随机数初始化的种子,用的是时间
+    for(int i = 0; i< 10 ; i++){
+        v1.push_back(rand()% 10);  // 都使用随机数来进行初始化
+        //   v2.push_back(rand()% 10);
+        l3.push_back(rand()% 10);
+    }
+
+    sort(v1.begin(),v1.end(),MyCompare01());  //进行普通排序, (也可以使用自定的第三个参数来实现逆向排序)
+  //  sort(v2.begin(),v2.end(),MyCompare01());
+        
+    l3.sort(MyCompare01());                  // list自带排序函数
+    
+    for_each(l3.begin(),l3.end(),MyPrint01()); //输出
+        cout << endl;
+    vector<int> v3;  // 准备把v1和v2的数据放入这个 v3 中
+//    v3.resize(v1.size() + v2.size()); //开辟空间,并且初始化
+    v3.resize(v1.size() + l3.size());
+    
+  //  merge(v1.begin(),v1.end(),v2.begin(),v2.end(),v3.begin(),MyCompare01());
+    merge(v1.begin(),v1.end(),l3.begin(),l3.end(),v3.begin(),MyCompare01());
+     //算法 merge.把v1和v2的数据都给v3 , 默认是从小到大排序, 最后一个参数是修改默认排序的一个伪函数.
+    
+    for_each(v3.begin(),v3.end(),MyPrint01());  //通过上面自定义的伪函数实现输出和打印
+    cout << endl;
+}
+//------------------------------------------------------------------------
+
+// random_shuffle 将元素进行随机排序, 只需要迭代器,不考虑类型
+void test02(){
+    vector<int>v;
+   // list<int>v;
+    for(int i = 0; i < 9 ; i++){
+        v.push_back(i);
+    }
+    for_each(v.begin(),v.end(),MyPrint01());  // 第一次打印
+        cout << endl;
+    vector<int>::iterator itBegin = v.begin();
+    vector<int>::iterator itEnd = v.end();
+    random_shuffle(itBegin, itEnd);   // 进行随机排序
+        cout << endl;
+    for_each(v.begin(),v.end(),MyPrint01());  // 第二次打印
+        cout << endl;
+}
+//------------------------------------------------------------------------
+
+// reverse  反转指定范围的元素
+void test03(){
+    vector<int>v;
+    for(int i = 0; i < 9 ; i++){
+        v.push_back(i);
+    }
+    for_each(v.begin(),v.end(),MyPrint01());  // 第一次打印
+    cout << endl;
+    reverse(v.begin(), v.end());  // 反转指定范围的元素 也只是需要迭代器
+    for_each(v.begin(),v.end(),MyPrint01());  // 第二次打印
+}
+
+
+int
+    main(void){
+        test03();
+    }
+```
+
+
+
+
+
+## 常用拷贝和替换算法
+
+> **常用拷贝和替换算法: `<algorithm>`**
+
+- **`copy(iterator beg, iterator end, iterator dest);`**
+  - **`// 将容器内指定范围的元素拷贝到另一容器中.两个迭代器, dest 是新容器的begin迭代器, (要保证这个新容器有足够的空间,resize());`**
+- **`replace(iterator beg, iterator end, oldvalue , newvalue);`**
+  - **`将容器内指定范围的某个旧元素修改为新元素,两个迭代器,  okdvalue 旧元素 , newvalue 新元素.`**
+
+- **`replace_if(iterator beg, iterator end, _callback, newvalue);`**
+  - **`将容器内指定范围满足条件的元素替换成新元素,两个迭代器, _callback 函数回调或者谓词(返回bool类型的函数对象), newvalue 新元素`**
+- **`swap(container c1, container c2);`**
+  - **`互换两个容器的元素, c1 容器1 , c2 容器 2`**
+
+```c++
+#include <iostream>
+#include <algorithm>
+#include <list>
+#include <vector>
+using namespace std;
+
+
+struct MyPrint01{
+    void operator()(int val){
+        cout << val <<  " ";
+    }
+};
+
+// copy swap
+void test01(){
+    vector<int> v1;
+    srand((unsigned int)time(NULL));
+    for(int i = 0; i< 10 ; i++){
+        v1.push_back(rand()% 10);
+    }
+    
+    for_each(v1.begin(),v1.end(),MyPrint01());cout << endl;
+    
+    vector<int> v2;
+    v2.resize(v1.size());
+    copy(v1.begin(),v1.end(),v2.begin());  // 使用了v1的两个迭代器 ,使用了v2的begin 一个迭代器
+    
+    cout << endl;
+    for_each(v2.begin(),v2.end(),MyPrint01());cout << endl;
+    
+// swap
+    vector<int>v3;
+    for(int i = 0; i< 10; i++){
+        v3.push_back(rand()%10);
+    }
+    cout << endl << " -------交换前----- " << endl;
+    for_each(v3.begin(), v3.end(), MyPrint01());cout <<endl;
+    for_each(v2.begin(), v2.end(), MyPrint01());cout <<endl;
+    swap(v2,v3);    // 简单的交换
+    cout << " -------交换后----- " << endl;
+    
+    for_each(v3.begin(), v3.end(), MyPrint01());cout <<endl;
+    for_each(v2.begin(), v2.end(), MyPrint01());cout <<endl;
+}
+//------------------------------------------------------------------
+
+// repace replace_if
+struct MyConmpare02{
+    bool operator()(int val){
+        return val > 5;  // 如果传入的参数大于5 就替换他
+    }
+};
+
+void test02(){
+    vector<int> v1;
+    srand((unsigned int)time(NULL));
+    for(int i = 0; i< 10 ; i++){
+        v1.push_back(i);
+    }
+    for_each(v1.begin(),v1.end(),MyPrint01());cout << endl;
+    replace(v1.begin(), v1.end(), 5, 100);  // 寻找 v1.begin 到 v1.end 之间的元素 5 全部修改成100
+                                          // 找不到就不替换
+    for_each(v1.begin(),v1.end(),MyPrint01());cout << endl;
+    
+    replace_if(v1.begin(), v1.end(), MyConmpare02(), 200);  // 自定义条件替换,把大于5的数替换成200
+    for_each(v1.begin(),v1.end(),MyPrint01());cout << endl;
+    
+}
+```
+
+
+
+
+
+
+
+## 常用算数生成算法
+
+> **常用算数生成算法:  `<numeric>`**
+
+- **`accumlate(iterator beg, iterator end , value);`**
+  - **`计算容器中所有元素的累加总和. 两个迭代器,value 累加值或偏移值 (写0就好了),如果写的是10, 那么累加完成后会多加这个10`**
+- **`fill(iterator beg, iterator end, value);`**
+  - **`将容器中所有元素全部变成 value (也包含有空间但未初始化的). 两个迭代器, value 填充元素, (如果是新容器,那么应该使用resize() 来扩充容器).`**
+
+```c++
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <ctime>
+#include <numeric>
+using namespace std;
+// accumulate  计算容器内元素相加的总值   , fill
+struct MyPrint01{
+    void operator()(int val){
+        cout << val << " ";
+    }
+};
+        
+void test01(){
+    vector<int> v;
+    v.push_back(1);
+    v.push_back(2);
+    v.push_back(3);
+    v.push_back(9);   // 这些元素相加等于15
+    
+    vector<int>::iterator itBegin = v.begin();
+    vector<int>::iterator itEnd   = v.end();
+        
+    int ret = accumulate(itBegin, itEnd, 0);  // 计算容器内所有元素的累加值,在加上后面的0
+    cout << "ret " << ret << endl;  // 这里输出的是15, 如果累加值的0 变了,那么他就要加上这个累加值
+
+// fill  用 value 来覆盖容器中所有的元素,也就是把容器中所有的内容全部替换成 value
+    vector<int>v2;
+    v2.push_back(1);
+    v2.resize(10);      //扩容
+    
+    itBegin = v.begin();
+    itEnd   = v.end();
+    
+    fill(v2.begin(), v2.end(), 10);
+    for_each(v2.begin(), v2.end(), MyPrint01());
+}
+```
+
+
+
+
+
+## 常用集合算法
+
+> **常用集合算法:  交集 并集 子集 差集 `<algorithm>`** 
+
+- **`set_intersection(iterator beg1,iterator end1,iterator beg2,iterator end2,iterator dest);`**
+  - **`求 两个 set 集合的交集  ( 两个集合必须是有序 序列)`**
+  - **`两个容器的  四个迭代器`**
+  - **`dest 目标容器迭代器 (begin())`**
+  - **`这个算法的返回值是 dest目标容器的最后一个元素的迭代器地址.end()`**
+  - 如果是自定义类型,那么会在最后一个多传入一个 回调伪函数;
+- **`set_union(iterator beg1,iterator end1,iterator beg2,iterator end2,iterator dest)`**
+  - **`两个集合的交集, 不会出现重复元素.(重复元素只显示一次)`**
+  - **`将两个容器的值的交集 结果传入给 第三个容器, 第三个容器的容量选前两个容器的容量最小值即可`**
+  - 自定义类型的话,也需要一个回调伪函数
+- **`set_difference(iterator beg1,iterator end1,iterator beg2,iterator end2,iterator dest)`**
+  - **`两个集合的差集`**
+  - 和上面两个相同.
+
+```c++
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <ctime>
+#include <numeric>
+using namespace std;
+// accumulate  计算容器内元素相加的总值   , fill
+struct MyPrint01{
+    void operator()(int val){
+        cout << val << " ";
+    }
+};
+
+// set_intersection  交集
+void test02(){
+    vector<int> v1;
+    vector<int> v2;
+    
+    for(int i = 0; i < 10 ; i++){
+        v1.push_back(i);
+         v2.push_back(i+5);
+    }
+
+    vector<int>v3;
+    v3.resize(min(v1.size(),v2.size()));  //min 返回两个值中较小的那个
+    // 给v3开辟空间,  并且把多余的空间全部初始化为0  (其他类型则不固定)
+    
+        vector<int>::iterator itBegin_1 = v1.begin();
+        vector<int>::iterator itBegin_2 = v2.begin();
+        vector<int>::iterator itBegin_3 = v3.begin();
+        vector<int>::iterator itEnd_1 = v1.end();
+        vector<int>::iterator itEnd_2 = v2.end();
+        
+    vector<int>::iterator it =  set_intersection(itBegin_1,itBegin_2,itEnd_1,itEnd_2,itBegin_3);
+      // 计算 v1 和 v2 的交集,并把内容写入v3 (如果容器中是自定义类型,那么还需要添加一个回调函数参数).
+      // 该算法返回一个迭代器,这个迭代器指向最后添加到v3容器中的元素的下一个元素, it就指向 9 后面的0
+      // 第二种调用: set_intersection(迭代器1-1,迭代器1-2,迭代器2-1,迭代器2-2,迭代器3-1,回调函数);
+        
+    // 打印结果
+    for_each(v1.begin(), v1.end(), MyPrint01()); cout << endl; // 0 ~ 9
+    for_each(v2.begin(), v2.end(), MyPrint01()); cout << endl; // 5 ~ 14
+    for_each(v3.begin(), it, MyPrint01()); cout << endl;   // 5 6 7 8 9
+    
+    cout << *it << endl;  // it指向 9 后面的 0
+    cout << endl << "------------------------------------" << endl;
+    
+// set_union 并集 , 并集就是把两个集合相加,重复的部分只显示一次,(因为集合不能用重复元素)
+    vector<int> v4;
+    v4.resize(v1.size()+v2.size());  // 开辟空间,10+10 = 20
+    it = set_union(v1.begin(),v1.end(),v2.begin(),v2.end(),v4.begin());
+     // 计算 v1 和 v2 的并集 , 并把内容写入 v4 (自定义还需要特殊化)
+    // 该算法返回一个迭代器,这个迭代器指向最后添加到v4容器中的元素的下一个元素, it就指向 14 后面的0
+    
+    // 打印结果
+    for_each(v4.begin(), it, MyPrint01()); cout << endl; //输出 0 ~ 14
+    cout << endl << "------------------------------------" << endl;
+    
+// set_difference 差集 ,
+    vector<int> v5;  // 保存 v1 差 v2 的集合值
+    vector<int> v6;  // 保存 v2 差 v1 的集合值
+    v5.resize( min(v1.size(),v2.size()) );  // 申请内存空间, 差集不可能会大于 v1
+    v6.resize( min(v1.size(),v2.size()) );  // 差集不可能会大于 v2
+        
+    it = set_difference(v1.begin(),v1.end(),v2.begin(),v2.end(),v5.begin());
+    for_each(v5.begin(), it, MyPrint01()); cout << endl; //输出 0 1 2 3 4
+    it = set_difference(v2.begin(),v2.end(),v1.begin(),v1.end(),v6.begin());
+    for_each(v6.begin(), it, MyPrint01()); cout << endl; //输出 10 11 12 13 14
+}
+
+```
 
