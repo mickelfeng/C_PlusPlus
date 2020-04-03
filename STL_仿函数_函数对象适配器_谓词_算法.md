@@ -42,15 +42,14 @@
   - [stack赋值操作API](#stack赋值操作API)
   - [stack大小操作API](#stack大小操作API)
 - [queue](#queue)
-  
   - [queue构造函数API](#queue构造函数API)
   - [queue存取,插入和删除操作API](#queue存取,插入和删除操作API)
   - [queue赋值操作API](#queue赋值操作API)
   - [queue大小操作API](#queue大小操作API)
 - [list](#list)
-- [list构造函数API](#list构造函数API)
+  - [list构造函数API](#list构造函数API)
   - [list数据元素插入和删除操作API](#list数据元素插入和删除操作API)
-  
+
     - [list大小操作API](#list大小操作API)
     - [list反转排序API](#list反转排序API)
     - [list基本范例和应用](#list基本范例和应用)
