@@ -17,6 +17,14 @@ auto fun = [函数对象参数](操作符重载函数参数)mutable->返回值�
 
 /* 通过匿名类调用 */
 fun();  //和正常函数一样
+
+
+
+
+// 创建一个指向 lambda 表达式的函数指针
+#include <functional>
+std::function<void(int)> fun = [](int a){ };
+fun(10):
 ```
 
 - **`[]` 标示 Lambda开始.不能省略,必须存在**
