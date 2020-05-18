@@ -24,6 +24,17 @@
 
 using namespace std::chrono;      //添加命名空间, 或不添加
 
+
+class CELLTime {
+public:
+    //得到当前的时间,  毫秒
+    static time_t   getNewTimeInMilliSec(void) {
+        return   duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch()).count();
+    }
+};
+
+
+
 class  CELLTimestamp{
 public:
     CELLTimestamp(){
@@ -1207,13 +1218,14 @@ if (_tTime.getElapsedSecond() >= 1.0){   //大于等于1秒的时候触发
 
 # 休眠函数
 
-> `<chrono>`
+> `<chrono>` 和 `<thread>`
 
 - **C++提供的毫秒级休眠函数和对象**
 - 声明一个休眠时间,也就是100毫秒:`std::chrono::milliseconds t(100);`
 - 启动一个休眠:`std::this_thread::sleep_for(t);`
 
 ```c++
+#include <thread>
 #include <chrono>
 // 声明一个休眠的时间, 毫秒单位
 std::chrono::milliseconds t(100);
