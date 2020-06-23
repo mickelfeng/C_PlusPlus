@@ -631,14 +631,15 @@ push_back(一个参数);  // 在末尾压入(插入)一个数据元素
 /* 删除操作 */
 pop_back(无参数); //弹出在末尾最后一个数据元素(也就是删除最后一个元素)
 erase(const iterator start, const iterator end); // 删除迭代器从start到end 之间的元素
-erase(const iterator pos);  // 删除迭代器指向的一个元素
+erase(const iterator pos);  // 删除迭代器指向的一个元素, 并返回下一个元素的迭代器指针
 clear(无参数);  // 删除容器中的所有元素
 ```
 
 - **这些API 都是没有返回值的,所以无法判断删除了哪个元素.**
   - 要使用 `auto a = v.back();`  来获取最后一个元素,然后决定是否删除
-
 - **在删除元素之前 还是尽量确定后再进行删除.**
+- **在使用迭代器循环检测和删除的时候,要这么来更新迭代器:**
+    - **`item  = ver.erase(item);`  // 删除迭代器指向的数据, 然后得到下个元素的迭代器**
 
 
 
@@ -1231,10 +1232,10 @@ int main(void)
 
 ## set/multiset
 
-> **set/multiset  容器 :  他们同用一个同头文件 `<set>`    ,multimap:表示多重集合,多重映射,多重对应**
+> **set/multiset  容器 :  他们同用一个同头文件 `<set>`    ,multiset:表示多重集合,多重映射,多重对应**
 
 - ==**set 和 multiset 是两个容器 ,他们所有的内容全部相同,只有元素的重复不同**==
-  - **map不能出现重复的键值,multimap却可以重复.**
+  - **set不能出现重复的键值,multiset却可以重复.**
 - ==**两种容器最大的区别是: **==
   - ==**set 容器中不允许出现重复的元素. multiset 允许出现重复元素.**==
 
