@@ -9,7 +9,7 @@
 
 /* 下面是声明和调用 */
 [函数对象参数](操作符重载函数参数)mutable->返回值类型
-{  statement }();    //  <---- 小括号是重点, 因为没有传递参数, 也就是进行调用
+{  statement }();    //  <---- 小括号是重点, 因为没有传递参数, 也就是直接进行调用
 
 /* 下面是指向 Lambda 表达式的 匿名类 */
 auto fun = [函数对象参数](操作符重载函数参数)mutable->返回值类型
@@ -48,4 +48,16 @@ fun(10):
   - 这个声明可以省略;
 
 
+
+```c++
+int main(void){
+    int i = 0;
+    int p =  [&i](int d , char c) mutable ->int{
+        i++;
+        return i;
+    }(2, 'c');
+    
+    std::cout << p  << " i "  << i<< std::endl;
+}
+```
 

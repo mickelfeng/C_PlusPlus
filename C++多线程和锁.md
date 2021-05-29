@@ -38,11 +38,7 @@
 
 
 
-- `restrict`，C语言中的一种类型限定符（Type Qualifiers），用于告诉编译器，对象已经被指针所引用, 不能通过除该指针外所有其他直接或间接的方式修改该对象的内容。
-
-
-
-
+- **`restrict`，C语言中的一种类型限定符（Type Qualifiers），用于告诉编译器，对象已经被指针所引用, 不能通过除该指针外所有其他直接或间接的方式修改该对象的内容。**
 
 **使用的是C++标准库提供的多线程.**
 
@@ -65,6 +61,7 @@
 > - **多线程:**
 >   - **堆 , 全局变量**
 >   - **线程比进程更加节省资源. 而且也不会减少抢到cpu 的时间碎片个数.  (内核和Cpu 只认pcb无论进程和线程)**
+>   - **是通过共享页表来实现的**
 
 
 
@@ -76,7 +73,7 @@
 > - 线程号是给内核看的.
 >   - 查看方式:
 >     - 找到程序的进程ID (首先要找到进程的pid, 然后把下面的pid 替换)
->     - **`ps -Lf pid` 使用这个命令来查询**
+>     - **`ps -Lf pid`   #使用这个命令来查询**
 
 - **线程:**
   - **一个单独的进程可以看作是一个 单独的一个线程**
@@ -167,7 +164,7 @@
 - ==**通过这个条件变量和 互斥锁可以实现 线程同步.**==
   - **条件变量 :  这个本质不是锁. 但是条件变量能够阻塞线程.**
 
-
+- ==**原子操作, 开中断和关中断(硬件级)**==
 
 > - **条件变量 + 互斥量(锁) 能够完成线程同步, 但是单一的话是不可以的.需要两个组合使用**
 >   - **互斥量(锁) :  保护一块共享数据**
@@ -740,7 +737,7 @@ int main(){
 
 ### C-获得当前线程的ID号pthread_self
 
-- **虽然可以获得线程ID号,但是无法进行打印出来.**
+- **虽然可以获得线程ID号  结构体,是无法进行打印出来的.**
 
 ```c
 #include <pthread.h>
@@ -796,7 +793,7 @@ void pthread_exit(void *retval);
 - **注意事项:**
   - **子进程被杀死前,必须进行过一次系统调用(printf,read,write,都会进行系统调用).**
     - **如果实在不确定子线程有没有调用系统函数. 那么给子进程函数中设置一个 `ptherad_testcancel()`; 这个函数也可以.**
-    - **`ptherad_testcancel();` 这个函数没有任何意义,就是为了插入一个断点,让父线程可以杀掉这个子线程的一个位置.**
+      - **`ptherad_testcancel();` 这个函数没有任何意义,就是为了插入一个断点,让父线程可以杀掉这个子线程的一个位置.**
 
 ```c
 int pthread_cancel(pthread_t thread);
@@ -830,26 +827,10 @@ int main(void){
 
 ### C-回收子线程资源阻塞等待线程退出,获取线程退出状态pthread_join
 
-- **如果是线程分离,那么就不能使用这个函数了**
+- ==**如果是线程分离,那么就不能使用这个函数了**==
 - ==**这个函数会阻塞主线程, 直到子线程结束.**==
 
-```c
-int pthread_join(pthread_t thread, void** retval);
 
-	thread  参数: 要回收的子线程的线程id
-  retval  参数: 读取线程退出的时候携带的状态信息. 
-                 这是一个传出参数.
-                 和 pthread_exit 中的 retval参数指向内存地址相同.
-
-返回值:  如果成功返回 0 ;
-        如果失败返回 返回错误编号, 需要使用 strerror 来读取.
-
-
-/*****************************************************/
-范例:  void* ptr;     // 用来存放退出线程所携带的信息
-      pthread_join(pthread,&ptr);   // 阻塞主线程,等待子线程退出 ,然后把信息写入 ptr
-
-```
 
 
 
@@ -905,7 +886,7 @@ int ptherad_detach(pthread_t pthread);
 /*************************************************************************************/
 
     范例:
-		void myfunc(void) {}  // 空函数
+		void myfunc(int i ) {}  // 空函数
 
     // 创建一个子线程
     pthread_t pthid;
@@ -914,7 +895,7 @@ int ptherad_detach(pthread_t pthread);
     pthread_attr_init(&attr);     // 将这个变量初始化
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);  // 将属性设置为 分离
 
-    int ret = pthread_create(&pthid, &attr, myfunc, NULL); // 创建线程,并将属性传入,分离
+    int ret = pthread_create(&pthid, &attr, myfunc, 1); // 创建线程,并将属性传入,分离
 
     if( ret != 0){                                  // 判断是否创建成功
         printf("error number: %d\n",ret);
@@ -952,7 +933,7 @@ int ptherad_detach(pthread_t pthread);
       - **如果创建了 数组对象.那么执行一次 `.detach()` 就会把数组内的所有线程全部开启, 也就是说, 重复调用是无效的.但是可以解决删除问题.**
         - ==**但是, 没有执行 `.detach() 或 .join()` 的 存在于堆或栈上的线程对象, 是不能够执行`delete`的, 必须全部调用, **==
     - **`t.join();` 会启动一个或多个线程,并等待该线程执行结束之后,继续执行主线程**
-      - **多个线程指的是数组, 里面都是线程对象, 当数组中的某个对象调用 `.join()` 时, 数组内的所有对象全部都会启动, 也就是某个时间点一起并行执行.**
+      - **多个线程指的是数组, 里面都是线程对象, 当数组中的某个对象调用 `.join()` 时, 数组内的所有对象全部都会启动, 也就是某个时间点一起 ==并行== 执行.**
 - **使用`std::thread t(函数指针);` 来创建线程,但不调用 `.detach() 和 join()` 的任何一个,那么线程会直接启动, 但是父进程结束前会收到一个信号 `SIGABRT` . 这个是没有调用`.detach() 和 join()` 引发的.**
   - **如果使用 `std::thread t(函数指针);` 创建线程,并且调用了  `.detach() 或 join()` .那么线程会在`.detach() 或 join()` 调用处启动, 不会在创建函数之后就直接运行子线程.**.
 - **可以让线程去执行某个类内的函数**
@@ -962,43 +943,45 @@ int ptherad_detach(pthread_t pthread);
 ```c++
 #include <iostream>
 #include <thread>
+#include <functional>
 
-void 
+void
 cmdThread(int a, char b){
-  std::cout << "第二线程" << std::endl;
+  std::cout << "线程" <<  a  <<  "  " << b << std::endl;
 }
 int
 main2(void){
  std::thread t1(cmdThread, 1, 'c');  //如果只是这么写, 不设置.join和.detach,那么线程会直接启动
  std::thread* t2 = new std::thread(cmdThread, 1, 'c');  // 和上面一样.
   // 如果这么写, 那么在主线程结束前,会出现一个信号 SIGABRT,这个信号给 t1和t2调用 detach即可解决.
+    return 0;
 }
 
-int 
+int
 main(void){
-  std::thread t1(cmdThread, 1, 'c');  //创建线程. 并准备好了需要传递的参数
+  std::thread t1(cmdThread, 1, 'a');  //创建线程. 并准备好了需要传递的参数
   t1.detach();                    //启动线程 并 设置线程分离
-  
-  std::thread t2(cmdThread, 1, 'c');  //创建线程. 并准备好了需要传递的参数
+
+  std::thread t2(cmdThread, 2, 'b');  //创建线程. 并准备好了需要传递的参数
   t2.join();                      // 启动线程,并等待该线程结束,然后主线程继续向下执行
-    
-  
-  thread t3[3];       //创建线程数组. 不用给初始化.
+   
+  std::thread t3[3];       //创建线程数组. 不用给初始化.
   for (int i =0; i< 3; i++){
-    t3[i] = thread(workFun, 1 , 'b' );     // 循环进行初始化,但是使用的是 匿名对象深拷贝.(效率低)
+    t3[i] = std::thread(cmdThread, i+3 , 'c'+i );     // 循环进行初始化,但是使用的是 匿名对象深拷贝.(效率低)
     t3[i].join();      // 进程挨个启动, 因为是挨个创建的, 如果创建全部之后再调用也行, 但是必须全部调用
   }
   
   
-  thread* t4[4];       //创建线程数组. 不用给初始化.
+  std::thread* t4[4];       //创建线程指针数组. 不用给初始化.
   for (int i =0; i< 4; i++){
-    t4[i] = new thread(workFun, 1 , 'b' );     // 循环进行初始化,但是使用的是 堆空间.
+    t4[i] = new std::thread(cmdThread, 7+i , 'c'+3+i );     // 循环进行初始化,但是使用的是 堆空间.
   }
   t4[0]->detach();       //启动t4 数组内全部的子线程, 但会造成 delete 失败. 应该全部手动调用
   t4[1]->detach();
   t4[2]->detach();
   t4[3]->detach();   //虽然这里调用了, 但是什么都不会发生. 如果不这么做, 会无法删除没有调用.detach()
-                     // 的对象, 哪怕对象存在于栈空间也一样, 否则 主线程绝对报错. 
+                     // 的对象, 哪怕对象存在于栈空间也一样, 否则 主线程绝对报错.
+    return 0;
 }
 
 
@@ -1013,8 +996,7 @@ class PP{
     std::thread t(std::mem_fn(&PP::OnRun), this);  //后面的这个this 是非常重要的, 类成员函数的隐藏参数
     t.detach();   //线程分离
 }
-}
-
+};
 ```
 
 
@@ -1027,7 +1009,7 @@ class PP{
   - `m.lock();`  上锁. 应该给临界区上锁.但不应该加在循环上.
   - `m.unlock();` 解锁.
   - **自解锁和自上锁`(可以解决异常)`**:
-    - **`lock_guard<mutex> lg(m);`, 找个对象就是一个对 mutex的封装. 构造是 `m.lock();` ,析构是 `m.unlock();`**
+    - **`lock_guard<mutex> lg(m);`, 这个对象就是一个对 mutex的封装. 构造是 `m.lock();` ,析构是 `m.unlock();`**
     - ==该类型存在于作用域之中,让他自动析构来达到解锁的目的,可以避免一些异常而导致无法解锁的发生==
 
  
@@ -1069,6 +1051,7 @@ int main(int argc, const char * argv[]) {
   for (int i =0; i< tCount; i++){
     delete t[i];  
   }
+  sleep(2);
 }
 
 /* 结论: 线程数4, 每个循环执行 1000次 sum++,  程序结束后 sum = 4000; ,没有任何明面加锁操作. */
@@ -1080,10 +1063,10 @@ int main(int argc, const char * argv[]) {
 
 ## C++中的自解锁
 
-> 头文件 `<mutex>`
+> **头文件 `<mutex>`**
 
 - **自解锁和自上锁`(可以解决异常)`**:
-    - **`std::lock_guard<std::mutex> lg(m);`, 找个对象就是一个对 mutex的封装. 构造是 `m.lock();` ,析构是 `m.unlock();`**
+    - **`std::lock_guard<std::mutex> lg(m);`, 这个对象就是一个对 mutex的封装. 构造是 `m.lock();` ,析构是 `m.unlock();`**
         - m是 `std::mutex m;`
     - ==该类型存在于作用域之中,让他自动析构来达到解锁的目的,可以避免一些异常而导致无法解锁的发生==
 - **`std::unique_lock<std::mutex> ug(m);`  这个也是自解锁, 只不过功能更多而已**
@@ -1095,7 +1078,6 @@ int main(int argc, const char * argv[]) {
 std::mutex  lock;
 std::lock_guard <std::mutex> lg(lock);   // 必须用一个 互斥锁
 
-
 std::unique_lock<std::mutex> ug(lock);  
 ug.lock();   // 加锁
 ug.try_lock() ;  //尝试加锁
@@ -1106,17 +1088,13 @@ ug.release();    //释放锁
 
 
 
-
-
-
-
 ## C++信号量锁
 
 > 头文件 `<condition_variable>` , 翻译过来就是 支持阻塞等待的条件变量
 
-- 陷入阻塞, 等待唤醒
-- 但要注意虚假唤醒, 会造成死锁
-    - 就是当前没有阻塞线程, 却调用了一次唤醒函数, 随后线程进入了阻塞, 但无法得到唤醒了.
+- **陷入阻塞, 等待唤醒**
+- **但要注意虚假唤醒, 会造成死锁**
+    - **就是当前没有阻塞线程, 却调用了一次唤醒函数, 随后线程进入了阻塞, 但无法得到唤醒了.**
 
 ```c++
 #include <condition_variable>

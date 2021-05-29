@@ -93,14 +93,18 @@ std::chrono::time_point<std::chrono::high_resolution_clock> _begin;  //时间点
 
 
 ```c++
-
-CELLTimestamp  _tTime;     // 计时
-
-_tTime.update(); // 更新当前时间点.
-if (_tTime.getElapsedSecond() >= 1.0){   //大于等于1秒的时候触发
-  auto t1 = _tTime.getElapsedSecond();   // 获得时间差, 秒级
-  std::cout  << "time<" << t1  << std::endl;  // 输出的是秒级
-  _tTime.update(); // 更新当前时间点.
+#include "temp.hpp"
+int main(void){
+    CELLTimestamp  _tTime;     // 计时
+    _tTime.update(); // 更新当前时间点.
+    while(1){
+        
+        if (_tTime.getElapsedSecond() >= 1.0){   //大于等于1秒的时候触发
+            auto t1 = _tTime.getElapsedSecond();   // 获得时间差, 秒级
+            std::cout  << "time<" << t1  << std::endl;  // 输出的是秒级
+            _tTime.update(); // 更新当前时间点.
+        }
+    }
 }
 ```
 
