@@ -167,7 +167,6 @@
 >     int fun(struct cer* &tmp)  // 一个函数  形参是结构类型的指针的引用
 >       {  tmp = (struct cer*)malloc(sizeof(struct cer)); } // 直接就可以当申请内存当指针
 >     ```
->
 
 
 
@@ -581,6 +580,24 @@ main(void){
 
 
 
+==为了避免之后的初始化问题, 应该将静态成员封装到某个只返回该静态成员的成员函数内==
+
+**如果没有调用过这个返回静态成员的函数, 那么就不会引发构造和析构成本, 普通的static可不会有这种好事**
+
+**但是多线程的情况下会有些问题, 解决方式就是 在单线程时, 就把这些类进行初始化和静态函数的手工调用** 
+
+```c++
+template <typename T>
+class A{
+	public:
+		static int&  retAi(void) {  static int i = 0;   return i; }	
+  // 这样就多了一个静态成员
+    static T&  retAt(void) { static T t = 0; return t;  }  // 使用于模版
+}
+```
+
+
+
 
 
 ### 常量成员函数
@@ -602,10 +619,6 @@ class A{
   	int num;
 };
 ```
-
-
-
-
 
 
 
@@ -735,7 +748,7 @@ public:
     
 private:
     friend temp& operator+= (temp&, const temp&);// 友元加等, 跟上面有冲突了, 两者选其一即可
-    int a, b;
+    mutable int a, b;  // mutable 关键字,可以在类对象为const时, 仍可以修改这个变量,无法与static一起使用
     int arr[10];     // 注意深拷贝, 但是不涉及 加减法 以及 += 和 -= 的改变
 };
 
@@ -754,6 +767,18 @@ private:
    this->b += p.b;
    return *this;
  }
+
+/*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*/
+/* 乘法 操作符重载,  需要在返回值添加const , 否则会出现 (t1* t2) =t3 ;  的奇怪场面 */
+const inline temp
+temp::operator* (const temp& t){
+	 temp t1(t);
+   t1.a *= this->a;
+   t1.b *= this->b;
+	 for(int i = sizeof(t1.arr)/sizeof(int) -1; i > 0; i--)
+      t1.arr[i] *= this->arr[i]
+   return t1;
+}
 
 /*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*/
 /* 加等 友元操作符重载 (也就是全局操作符重载), 如果这么写的话,全局和类内部就冲突了,那么留下一个就好了 */
@@ -840,14 +865,25 @@ temp p = p1 - p2 - p3; /*运算规则是*/ temp p = operator-(operator-(p1,p2),p
 /*  =========================================================================== */
 
 /* [] 重载 数组运算符, 其实返回的就是 对象内 某个数组类型的 数组值. */
-    inline int&  
-    temp::operator[] (int i){
-      if ( i>9 ){
-        std::cout << "越界"
-        return -1;
-      }
-      return this->arr[i];
-    }
+// const 对象要使用的 重载函数, 返回值应该也使用 const
+const  inline int&  
+  temp::operator[] (int i)  const {
+  if ( i>9 ){
+    std::cout << "越界"
+      return -1;
+  }
+  return this->arr[i];
+}
+
+// 非const 对象要是用的 重载函数 , 可以直接调用 const的重载函数, 并且进行转换
+
+inline int&
+  temp::operator[] (int i){
+  return const_cast<int&> ( static_cast<const temp&>(*this)[i]);
+  //static_cast<const temp&>(*this)[i] 这里调用了 const的[] 重载函数. const的位置是对的
+  
+}
+
 
 /*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*/
 /* () 重载小括号:(经常用在sql内), 或者 仿函数 , 如果是 静态的话 static  那么就可以直接使用*/

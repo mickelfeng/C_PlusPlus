@@ -5,8 +5,9 @@
   - [不同平台下的线程](#不同平台下的线程)
   - [多线程容易造成数据混乱](#多线程容易造成数据混乱)
 - [线程同步思想](#线程同步思想)
-  - [线程同步实现](#线程同步实现)
-  - [线程同步范例-生产者与消费者模型](#线程同步范例-生产者与消费者模型)
+    - [线程安全函数特点](#线程安全函数特点)
+- [条件变量线程同步](#条件变量线程同步)
+    - [线程同步条件变量范例-生产者与消费者模型](#线程同步条件变量范例-生产者与消费者模型)
 - [信号量线程同步](#信号量线程同步)
   - [信号量线程同步范例-生产者消费者模型](#信号量线程同步范例-生产者消费者模型)
 - [互斥量-互斥锁](#互斥量-互斥锁)
@@ -17,6 +18,7 @@
   - [读写锁范例](#读写锁范例)
 - [在C中的多线程](#在C中的多线程)
   - [C中的创建线程函数原型pthread_create](#C中的创建线程函数原型pthread_create)
+  - [C中设置并发级别原型pthread_setconcurrency](#C中设置并发级别原型pthread_setconcurrency)
   - [C-获得当前线程的ID号  pthread_self](#C-获得当前线程的ID号pthread_self)
   - [C-获得当前线程返回值的错误号和输出错误信息 strerror](#C-获得当前线程返回值的错误号和输出错误信息strerror)
   - [C-单个线程退出,而且不影响其他线程的函数 pthread_exit](#C-单个线程退出,而且不影响其他线程的函数pthread_exit)
@@ -90,12 +92,28 @@
 
 > **主线程和子线程共享的内容**
 >
-> - **`.text  ,  .bss  ,  .data  ,  堆区  ,  动态库加载区  ,  环境变量  ,  命令行参数`**
+> - .text ,  进程指令
+> - **.bss  ,  数据   用来存储未初始化的变量**
+> - **.data  , 数据  用来存储已初始化的变量**
+> - 堆区  ,  
+> - 动态库加载区  ,  
+> - 环境变量  ,  
+> - 命令行参数, 
+> - 打开的文件(描述符), 
+> - 信号处理函数和信号处置, 
+> - 当前工作目录, 
+> - 用户ID, 
+> - 组ID
 >
 > **不共享的内容:**
 >
 > - **栈区  ,  栈区内存储的数据的地址  (每个线程都是独立的)**
-> - **如果一个进程有5个线程, 那么栈区会被平均分为5份.**
+>     - **如果一个进程有5个线程, 那么栈区会被平均分为5份.**
+> - 线程ID
+> - 寄存器集合, 包括程序计数器和栈指针
+> - errno
+> - 信号掩码
+> - 优先级
 
 
 
@@ -149,7 +167,7 @@
 
 
 
-## 线程同步思想
+# 线程同步思想
 
 - **线程同步思想**
   - 给共享资源上锁.
@@ -159,7 +177,21 @@
 
 
 
-### 线程同步实现
+## 线程安全函数特点
+
+- **应该尽量避免使用无论线程是否安全的函数**
+- **线程安全函数的特点:**
+    - 函数以 `_r` 结尾的新函数
+- **线程安全的条件:**
+    - **调用者返回结果预先分配空间, 并把指向该空间的指针作为参数传递给函数**
+
+
+
+
+
+
+
+## 条件变量线程同步
 
 - ==**通过这个条件变量和 互斥锁可以实现 线程同步.**==
   - **条件变量 :  这个本质不是锁. 但是条件变量能够阻塞线程.**
@@ -176,6 +208,11 @@
 - **条件变量的类型是: `pthread_cond_t ;`**
 
 ```c
+#ifdef __APPLE__
+	#include <pthread/pthread.h>
+#else
+	#include <pthread.h>
+#endif
 
 主要函数:
 	条件变量的类型是: pthread_cond_t cond;
@@ -184,18 +221,24 @@
   	int pthread_cond_init(
         pthread_cond_t* restrict cond,        //条件变量
        const pthread_condattr_t* restrict attr);    // 第二个参数是属性, 给NULL就好了 不需要设置
+// 返回值: 成功将返回0 并将新的条件变量 id 放入 cond 中，否则将返回错误号以指示错误。
+也可以使用这个宏来初始化  PTHREAD_COND_INITIALIZER
 
 销毁一个条件变量
   int pthread_cond_destroy( pthread_cond_t* cond );
 
-阻塞等待一个条件变量
+阻塞当前线程并 等待一个条件变量
   int pthread_cond_wait( pthread_cond_t* restrict cond,   // 条件变量的类型
                     pthread_mutex_t* restrict mutex);       // 这个是互斥锁的指针.
-// 这个函数 会阻塞线程, 然后将已经上锁的 mutex 这个互斥锁解锁. 
+// 这个函数 会阻塞当前线程, 然后将已经上锁的 mutex 这个互斥锁解锁. 
 //  当这个函数解除阻塞的时候, 会对互斥锁加锁.
+
+pthread_cond_wait() 函数原子地阻塞当前等待cond 指定的条件变量的线程，并释放mutex 指定的互斥锁。只有在另一个线程使用相同的条件变量调用 pthread_cond_signal() 或 pthread_cond_broadcast() 之后，等待线程才会解除阻塞，并且当前线程重新获取互斥锁上的锁。
+  
 
 唤醒至少一个 阻塞在条件变量上的线程:  { 到底唤醒几个 不确定 }
 int pthread_cond_signal( pthread_cond_t* cond);
+
 
 唤醒全部 阻塞在条件变量上的线程: { 全部都要醒 }
 int pthread_cond_broadcast( pthread_cond_t* cond);
@@ -209,7 +252,7 @@ int pthread_cond_broadcast( pthread_cond_t* cond);
 
 
 
-### 线程同步范例-生产者与消费者模型
+### 线程同步条件变量范例-生产者与消费者模型
 
 ```c
 #include <stdio.h>
@@ -457,7 +500,9 @@ int main(int argc, char* argv[]){
 > 互斥锁的使用步骤:
 >
 > 1. **创建互斥锁:  `pthread_mutex_t mutex;`**
-> 2. **初始化这把锁 : `pthread_mutex_init(&mutex, NULL);`**
+> 2. **初始化这把锁 :**
+>     1. **静态分配:`pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER`**
+>     2. **在运行时动态分配:  `pthread_mutex_init(&mutex, NULL);`**
 > 3. **寻找共享资源 :**
 >    1. **操作共享资源之前加锁: `pthread_mutex_lock(&mutex);    //上锁后操作共享资源 ...`**
 >    2. **操作共享资源结束后解锁: `pthread_mutex_unlock(&mutex);`**
@@ -468,7 +513,11 @@ int main(int argc, char* argv[]){
 ### 互斥锁的相关函数
 
 ```c
-#include <pthread.h>
+#ifdef __APPLE__
+	#include <pthread/pthread.h>
+#else
+	#include <pthread.h>
+#endif
 
 创建一把互斥锁:  
       pthread_mutex_t mutex;
@@ -477,7 +526,9 @@ int main(int argc, char* argv[]){
     int pthread_mutex_init(pthread_mutex_t* mutex, const pthread_mutexattr_t* attr);
         参数:  mutex : 锁 
               attr  : 锁的属性, 一般给NULL 就好了, 我们不关心
-
+    也可以是使用这个宏来进行初始化  mutex = PTHREAD_MUTEX_INITIALIZER;
+                
+                
 销毁互斥锁:
     int pthread_mutex_destroy(pthread_mutex_t* mutex);
         参数:   mutex : 锁
@@ -491,8 +542,8 @@ int main(int argc, char* argv[]){
 
 加锁: { 无阻塞 }
    int pthread_mutex_trylock(pthread_mutex_t* mutex);
-        没有锁上: 当前进程会给这把锁 加锁.
-        如果锁上了: 不会阻塞, 会返回一个非0 的错误号. (char* strerror(number) 来打印)
+        加锁成功: 当前进程会给这把锁 加锁. 并返回0
+        加锁失败: 不会阻塞, 会返回一个非0 的错误号. (char* strerror(number) 来打印)
         使用该函数时,必须使用if 判断返回值是否为0 ,而且必须填写 else 语句的错误处理.
      例: 
         if( pthread_mutex_trylock( &mutex) == 0){
@@ -581,13 +632,14 @@ restrict，C语言中的一种类型限定符（Type Qualifiers），用于告�
 
 
  0. 创建一把锁
-      pthread_relock_t  lock;    // 读写锁的变量,他拥有读属性和写属性
+      pthread_rwlock_t  lock;    // 读写锁的变量,他拥有读属性和写属性
 
  a.初始化读写锁
       int pthread_rwlock_init(
             pthread_rwlock_t* restrict rwlock,      // pthread_relock_t 锁的变量地址
             const pthread_rwlock_t* restrict attr   // 锁的属性, 给 NULL 就好了
-            );
+            );  // attr的一个属性就是 PTHREAD_PROCESS_SHARED 指定该锁用于多进程间共享
+    还可以使用一个宏来静态初始化 PTHREAD_RWLOCK_INITIALIZER
 
   b.销毁读写锁
       int pthread_rwlock_destroy(pthread_rwlock_t* rwlock);
@@ -611,6 +663,17 @@ restrict，C语言中的一种类型限定符（Type Qualifiers），用于告�
   g.解锁
       int pthread_rwlock_unlock(pthread_rwlock_t* rwlock);
             // 无论读锁还是写锁,都是用这个, 毕竟两种锁不能同时生效.
+ 
+ h.获得锁的属性
+      int pthread_rwlockattr_getpshared(const pthread_rwlockattr_t* attr, int* valptr);
+           // 获得锁的属性
+ i.设置锁的属性
+      int pthread_rwlockattr_setpshared(pthread_rwlockattr_t* attr, int value);
+           // 可被设置的属性只有两种, PTHREAD_PROCESS_PRIVATE, 或 PTHREAD_PROCESS_SHARED
+      // PTHREAD_PROCESS_SHARED  可以访问读/写锁所在的内存的任何进程的任何线程都可以操作该锁。
+      // PTHREAD_PROCESS_PRIVATE  只有在与初始化读/写锁的线程相同的进程中创建的线程才能操作锁。这是默认值。
+           // 成功返回0  , 失败时为 正的 EXXXX 值
+
 ```
 
 
@@ -710,11 +773,12 @@ int pthread_create(
 
 参数:    thread: 传出参数, 线程创建成功之后,会被设置一个合适的值
           attr: 默认传NULL,也可以传递进程分离参数 ,但是需要自己定义一个,然后使用函数初始化在传递过来.
- start_routine: 子进程的处理函数
-           arg: 回调函数的参数 (小心地址传递和值传递,有必要的话 可以上锁).
+ start_routine: 子进程的处理函数, 也可以让子线程传递出来一个指针
+           arg: 回调函数的参数 (小心地址传递和值传递,有必要的话 可以上锁), 或者子线程回传的值
 
 返回值:
      成功返回0 ,失败返回错误号.(这是进程独有的错误号,不能和其他标准库的混为一谈)
+     如果无法创建新的线程, 那么会返回 EAGAIN 错误
 
 /****************************************/
 范例: 
@@ -731,6 +795,18 @@ int main(){
  	 printf("error number %d , : %s",ret , strerror(ret));
 	}
 }
+```
+
+
+
+### C中设置并发级别原型pthread_setconcurrency
+
+```c
+int pthread_setconcurrency(int new_level);
+int pthread_getconcurrency(void);
+// 获取或设置并发级别,  必须在 创建子线程函数之前  进行调用
+//  参数:  new_level  :  告诉线程系统 我们希望并发运行多少线程.
+// 返回值: 成功为0
 ```
 
 
@@ -829,6 +905,18 @@ int main(void){
 
 - ==**如果是线程分离,那么就不能使用这个函数了**==
 - ==**这个函数会阻塞主线程, 直到子线程结束.**==
+
+```c
+#include <pthread.h>
+int pthread_join(pthread_t* tid, void** status);
+	
+	会暂停调用线程的执行，直到目标线程终止，
+    tid : pthread_create()  函数的第一个传出参数
+ status : 接收子线程结束之后,  回传的数据, 就是子进程函数的返回值
+//  成功返回0 ;
+```
+
+
 
 
 
