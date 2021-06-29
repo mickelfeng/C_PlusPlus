@@ -1,0 +1,91 @@
+d 以十进制形式输出带符号整数(正数不输出符号)              {字体 consolas 4号 }
+o 以八进制形式输出无符号整数(不输出前缀0，需要前戳时放入# 例%#o 八)
+x,X 以十六进制形式输出无符号整数(不输出前缀Ox，需要前戳时放入# 例%#x 十六)
+u 以十进制形式输出无符号整数
+f 以小数形式输出单、双精度实数
+e,E 以指数形式输出单、双精度实数
+g,G 以%f或%e中较短的输出宽度输出单、双精度实数
+c 输出单个字符
+s 输出字符串
+m 打印strerror（errno）的输出。不需要参数。
+
+2) 标志：标志字符为-、+、#、空格四种，其意义下表所示：
+- 结果左对齐，右边填空格
++ 输出符号(正号或负号)
+空格 输出值为正时冠以空格，为负时冠以负号
+# 对c,s,d,u类无影响；对o类,在输出时加前缀o；对x类,在输出时加前缀0x；对e,g,f 类
+当结果有小数时才给出小数点
+
+3) 输出最小宽度:用十进制整数来表示输出的最少位数。若实际位数多于定义的宽度，则
+按实际位数输出，若实际位数少于定义的宽度则补以空格或0。
+
+4) 精度:精度格式符以“.”开头，后跟十进制整数。本项的意义是：如果输出数字，
+则表示小数的位数；如果输出的是字符，则表示输出字符的个数；若实际位数大于
+所定义的精度数，则截去超过的部分。
+
+5).长度:长度格式符为h,l两种，h表示按短整型量输出，l表示按长整型量输出。
+
+6).转义字符
+\a报警		\b退格，后退	\f换页		\n换行		\r回车，到本行的开头
+\t水平制表符	\v垂直制表符	\\反斜杠	\'单引号	\"双引号
+\?问号		\Ooo八进制值	\xhh十六进制值
+
+
+范例代码
+
+#include<stdio.h>
+int main(void)
+{
+	char a = 37;//37在ASCLL表示 %
+	//1byte=8bit
+	//<complex.h>
+	//复数   float_Complex    double_Complex    long double_Complex
+	//虚数   float_Imaginary  double_Imaginary  long double_Imaginary
+	//带字符整数类型 int, long ,long long (%d  %ld  %lld ）, short(%hd   
+	//浮点数  double, float,long float,   (%f   %lf
+	//无符号前置代码  unsigned   （%d  %u
+	//有符号前置代码  signed     （表达语句无法赋值 
+	//符号类型   char   (%c
+	//布尔类型  _bool   (ture =1   false = 0) (%i
+	//16(%x %#X %xd)   8(%o  %#o  %od)  指数输出(%e *10  %p  *2  %a *16
+	printf("\t\t系统数据分配位数测试\n");
+	printf("int=%d bytes.\n", sizeof(int));//%d输出
+	printf("unsigned int=%d bytes.\n", sizeof(unsigned int));//%ud
+	printf("short int=%d bytes.\n", sizeof(short int));//%hd
+	printf("long=%d bytes.\n", sizeof(long));//%ld
+	printf("long int=%d bytes.\n", sizeof(long int));//%ld
+	printf("long long=%d bytes.\n", sizeof(long long));//%lld
+	printf("short=%d bytes.\n", sizeof(short));//%hd
+	printf("unsigned=%d bytes.\n", sizeof(unsigned));//%u
+	printf("char=%d bytes.\n", sizeof(char));//%c
+	printf("float=%d bytes.\n", sizeof(float));//%f
+	printf("double=%d bytes.\n", sizeof(double));//%f
+	printf("long double=%d bytes.\n", sizeof(long double));//%lf
+
+//格式化输出类型  %类输出
+	
+	printf("\n\t\t格式化输出类型\n 1byte=8bit\n");
+	printf("<complex.h>	\n");
+	printf("复数   float_Complex    double_Complex    long double_Complex\n");
+	printf("虚数   float_Imaginary  double_Imaginary  long double_Imaginary\n");
+	printf("带字符整数类型 int, long ,long long (%c d  %c ld  %c lld ）, short(%c hd)\n"
+		,a,a,a,a);
+	printf(" 浮点数  double, float, long float, (%c f   %c lf\n",a,a);
+	printf("无符号前置代码  unsigned   （%c d  %c u\n",a,a);		
+	printf("有符号前置代码  signed     （表达语句无法赋值 \n");
+	printf(" 符号类型   char(%c c		printf//布尔类型  _bool   (ture =1   false = 0) (%c i\n"
+		, a,a);
+	printf("16(%c x %c #X %c xd)   8(%c o  %c #o  %c od)  指数输出(%c e *10  %c p  *2  %c a *16\n"
+		,a,a,a,a,a,a,a,a,a);
+	printf("scanf 输入\n");
+
+//转义字符
+	//char b = 92;//92在ASCLL表示 /
+	printf("\n\t\t转义字符\n");
+	printf("\\a响铃	\\b退格	\\f换页	\\n换行	\\r回车	\\t水平制表符	\\v垂直制表符	\\\\反斜杠\n");
+	printf("\\'单引号	\\""双引号	\\?问号	\\Ooo八进制值	\\xhh十六进制值 \n");
+	getchar();
+	return 0;
+
+}
+

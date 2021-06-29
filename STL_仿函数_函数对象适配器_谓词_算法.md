@@ -323,6 +323,8 @@ for_each(迭代器,迭代器,回调参数);
 
 **重要的区别: char* 是一个指针,string 是一个类.**
 
+==**string 原型是 `typedef basic_string<char> string`**==
+
 - **string**
   - **string 封装了很多实用的成员方法:**
     - ==**查找`find`, 拷贝`copy`,删除`delete`,替换`replace`,插入`insert`,转换成c串 `c_str().`**==
