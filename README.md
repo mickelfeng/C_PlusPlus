@@ -16,6 +16,7 @@
   - [常量成员函数](#常量成员函数)
   - [友元](#友元)
   - [操作符重载](#操作符重载)
+    - [一个操作符new的范例](#一个操作符new的范例)
   - [继承](#继承)
     - [多继承中的虚继承](#多继承中的虚继承)
   - [继承类中的 vptr 指针分布初始化](#继承类中的vptr指针分布初始化)
@@ -811,7 +812,7 @@ operator-= (const temp& p){
  }
 
 /*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*/
- inline temp               // int t  是占位参数,没用处.
+ inline const temp               // int t  是占位参数,没用处.
  temp::operator++ (int t){ // 类内 重载的是后置++  先使用 后加 ,不能连加
  	 this->a++;
    this->b++;
@@ -822,7 +823,7 @@ operator-= (const temp& p){
 /* 全局 ++ 自增操作符, 和 类内的差不多, 函数体内容差不多 */
  inline tmep&
  operator++ (temp& t ) { ...; return t; }     // 前置++, 可连加
- inline temp 
+ inline const temp 
  operator++ (temp& t, int p) { ...; return temp(this->a -1, this->b -1); } //后置++ ,不可连加
 
 /*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*/
@@ -897,6 +898,7 @@ inline int&
 /*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*/
 /* new delete 重载操作符: (new 应该返回一个万能指针),这里可以在operatou和 new delete 中间出现空格. */
   /* new[] delete[] 重载操作符, 就是数组 */
+
    inline void* 
    temp::operator new(size_t size){   // 返回一个指向内存的万能指针. 获得空间之后, 会自动调用构造函数
      return  malloc(size);  // 虽然只是使用了malloc 来代替,但是可以触发 构造函数 来给类分配空间和值
@@ -950,6 +952,128 @@ inline void
 - 运算符重载函数可以写在类内,也可以写在类外然后变成类的友元函数,都是可以的.
 - 重载双目运算就是运算符有两个参数,(a + b  中的 + 就是双目运算符).
 - <u>无论什么情况都要把 = 号操作重载和 深拷贝构造 两个重要的成员写出来</u>
+
+
+
+
+
+
+
+## 一个操作符new的范例
+
+- **new 必须返回正确的值**
+- **内存不足时必须调用 new-handling 函数( ` std::set_new_handler() 函数设置的`)**
+  - **而且会无穷循环, 尝试分配内存**
+- **没有能力申请不到内存 就会抛出一个 bad_alloc异常**
+- **必须有对付 零 内存需求的准备**
+- **避免掩盖正常形式的 new** 
+- **基类绝对不可以 遗漏 virtual 析构函数**
+
+```cpp
+
+
+class base{
+public:
+    static void* operator new( std::size_t size) noexcept(false) {
+        return ::operator new(size);
+    }
+    static void operator delete (void* pMemory) noexcept(true) {
+        ::operator delete(pMemory);
+    }
+    
+    static void* operator new (std::size_t  size, void* ptr) noexcept(false){
+        return ::operator new (size, ptr);
+    }
+    static void operator delete (void* pMemory, void* ptr) noexcept(true) {
+        ::operator delete(pMemory, ptr);
+    }
+    
+    static void* operator new( std::size_t size, const std::nothrow_t& nt) noexcept(false) {
+        return ::operator new(size,nt);
+    }
+    static void operator delete (void* pMemory, const std::nothrow_t) noexcept(true) {
+        ::operator delete(pMemory);
+    }
+};
+
+class NewHandlerHolder{
+public:
+    explicit NewHandlerHolder(std::new_handler nh) : handler(nh) {}
+    ~NewHandlerHolder() { std::set_new_handler(handler); };
+private:
+    std::new_handler handler;
+    NewHandlerHolder(const NewHandlerHolder&);
+    NewHandlerHolder& operator = (const NewHandlerHolder&);
+};
+
+
+
+template<typename T>
+class NewHandlerSupport{
+public:
+    static std::new_handler set_new_handler(std::new_handler p) noexcept(true);
+    static void* operator new (std::size_t size) noexcept(false);
+private:
+    static std::new_handler currentHandler;
+};
+
+template<typename T>
+std::new_handler NewHandlerSupport<T>::set_new_handler(std::new_handler p) noexcept(true){
+    std::new_handler oldHandler = currentHandler;
+    currentHandler = p;
+    return oldHandler;
+}
+
+
+template<typename T>
+void* NewHandlerSupport<T>::operator new (std::size_t size) noexcept(false){
+ NewHandlerHolder h( std::set_new_handler(currentHandler) );
+      return ::operator new(size); // 调用全局的operator new  ,如果分配失败 就调用 currentHandler 指向的代码, 如果成功就恢复 系统默认的
+}
+
+template<typename T>
+std::new_handler NewHandlerSupport<T>::currentHandler = nullptr;
+
+class Widget : public NewHandlerSupport<Widget>{
+public:
+    
+};
+
+std::new_handler old_glbal_new_handler;
+std::new_handler new_glbal_new_handler;
+
+
+void  my_new_handler(void){
+    std::cerr << "my_new_handler 自定义错误" << std::endl;
+    std::set_new_handler(new_glbal_new_handler);
+///    std::abort();
+}
+
+
+void  glabl_new_handler(void){
+    std::cerr << "新设置的函数" << std::endl;
+    std::set_new_handler(old_glbal_new_handler);
+///    std::abort();
+}
+
+int main(void){
+    Widget::set_new_handler(my_new_handler);
+    try {
+        Widget* wdp = new Widget;
+        if( wdp == nullptr) throw (std::bad_alloc());
+    } catch ( std::bad_alloc()  ) {   //异常处理
+        exit(errno);
+    }
+    std::cout <<std::endl;
+}
+
+```
+
+
+
+
+
+
 
 
 
