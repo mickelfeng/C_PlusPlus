@@ -63,3 +63,39 @@ int main(void){
 }
 ```
 
+
+
+
+
+
+
+
+
+## Lambda表达式配合右值引用和多线程
+
+```c
+
+struct  stre{
+    stre(int c){}
+    ~stre(){}
+};
+
+int main(int argc, const char * argv[]) {
+    const int ccLength = 20;
+    char cc[ccLength] = {0};
+    
+    for (int i =0; i < ccLength; i++) {
+        cc[i] = "0123456789ABCDEF"[i%16];
+    }
+  
+  
+    stre   stref (2);
+    int count= 1;
+    std::thread  thr([count]( stre  stref ){
+        printf("%d\n",count);
+    }, std::move(stref));
+    thr.detach();
+  return 0;
+}
+```
+

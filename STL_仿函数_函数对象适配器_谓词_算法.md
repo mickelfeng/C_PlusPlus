@@ -49,7 +49,6 @@
 - [list](#list)
   - [list构造函数API](#list构造函数API)
   - [list数据元素插入和删除操作API](#list数据元素插入和删除操作API)
-
     - [list大小操作API](#list大小操作API)
     - [list反转排序API](#list反转排序API)
     - [list基本范例和应用](#list基本范例和应用)

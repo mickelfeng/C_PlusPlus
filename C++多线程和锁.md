@@ -32,7 +32,7 @@
   - [C++中的原子操作-原子锁](#C++中的原子操作-原子锁)
   - [C++中的自解锁](#C++中的自解锁)
   - [C++信号量锁](#C++信号量锁)
-  - 
+- [Lambda表达式配合右值引用和多线程](#Lambda表达式配合右值引用和多线程)
 
 
 
@@ -1112,36 +1112,57 @@ class PP{
 - **这个原子操作,内部的实现也是锁. 当普通的锁来用即可.**
 
 ```C++
+#include <iostream>
+#include <thread>
 #include <mutex>
 #include <atomic>
+#include <unistd.h>
+
+using namespace std;
+
 class test{
-    // 空的
+public:
+    test():i(0){}
+    int ret(const int &q){
+        ++i;
+        return i;
+    }
+private:
+    int i ;
 };
 
-atomic<test>  tTest; // 可以放入对象.
+atomic<test>  tasTest; // 可以放入对象.
 atomic_int sum(0);   // typdef定义的, 原型是, atomic<int> sum(0);
 const int tCount = 4; //线程的数量.
 
-void workFun(int index){
-	for( int i =0; i< 1000; i++)
-	  sum++;
+test tes;
+
+
+void workFun( void){
+    for( int i =0; i< 1000; i++)
+        tes.ret(tCount);
 }
 
-int main(int argc, const char * argv[]) {    
-  thread* t[tCount] = {};
-  for (int i =0; i< tCount; i++){
-    t[i] =  new thread(workFun, i);  
-  }
-  for (int i =0; i< tCount; i++){
-    t[i]->detach();
-  }
-  
-  for (int i =0; i< tCount; i++){
-    delete t[i];  
-  }
-  sleep(2);
-}
 
+int main(int argc, const char * argv[]) {
+    std::thread tpd[tCount];
+    
+    
+    
+    for (int i =0; i< tCount; i++){
+        std::thread tp ( workFun);
+        tpd[i].swap(tp);
+    }
+    
+    for (int i =0; i< tCount; i++){
+        tpd[i].join();
+    }
+    
+//   sleep(3);
+    std::cout <<  tes.ret(1) << std::endl;
+//  std::cout << "sum " << sum << std::endl;
+    return 0;
+}
 /* 结论: 线程数4, 每个循环执行 1000次 sum++,  程序结束后 sum = 4000; ,没有任何明面加锁操作. */
 ```
 
@@ -1254,6 +1275,35 @@ private:
 
 
 
+
+
+
+## Lambda表达式配合右值引用和多线程
+
+```c
+struct  stre{
+    stre(int c){}
+    ~stre(){}
+};
+
+int main(int argc, const char * argv[]) {
+    const int ccLength = 20;
+    char cc[ccLength] = {0};
+    
+    for (int i =0; i < ccLength; i++) {
+        cc[i] = "0123456789ABCDEF"[i%16];
+    }
+  
+  
+    stre   stref (2);
+    int count= 1;
+    std::thread  thr([count]( stre  stref ){
+        printf("%d\n",count);
+    }, std::move(stref));
+    thr.detach();
+  return 0;
+}
+```
 
 
 

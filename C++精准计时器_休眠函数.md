@@ -167,7 +167,7 @@ int main(void){
     
     class ClientSocket {
     public:
-        ClientSocket(const SOCKET _sockfd = INVALID_SOCKET) :_sockfd(_sockfd), _szMsggBuf(""), _lastPos(0) {}
+        ClientSocket(const SOCKET _sockfd = INVALID_SOCKET) :_sockfd(_sockfd), _szMsgBuf(""), _lastPos(0) {}
     
         ~ClientSocket() {}
     
@@ -178,7 +178,7 @@ int main(void){
     
     
         char* msgBuf(void) {
-            return _szMsggBuf;
+            return _szMsgBuf;
         }
     
     
@@ -198,7 +198,7 @@ int main(void){
      //   char  _szRecv[RECV_BUFF_SIZE];
     
         //第二缓冲区, 消息缓冲区
-        char  _szMsggBuf[RECV_BUFF_SIZE * 2];
+        char  _szMsgBuf[RECV_BUFF_SIZE * 2];
         int    _lastPos;    // 第二缓冲区 目前存在的数据长度
     
     };
@@ -233,6 +233,7 @@ int main(void){
                 std::cout << "< socket = " << _sock << " >"
                     << "关闭之前的套接字(或已连接的套接字),并重新建立一个新的套接字" << std::endl;
                 Close();
+                return this->_sock;
             }
     
     #ifdef _WIN32
@@ -411,19 +412,20 @@ int main(void){
     
     
                 //已连接客户端向服务器发送了消息
-                for (int n = static_cast<int>(_clients.size()) - 1; n >= 0; n--) {
-                    if (FD_ISSET(_clients.at(n)->sockfd(), &fdRead)) {
-                        FD_CLR(_clients.at(n)->sockfd(), &fdRead);
-                        if (-1 == RecvData(_clients.at(n))) {
-                            std::cout << "通讯结束,关闭这个套接字" << _clients.at(n)->sockfd() << std::endl;
-    #ifdef _WIN32
-                            closesocket(_clients.at(n)->sockfd());
-    #else
-                            shutdown(_clients.at(n)->sockfd(), SHUT_RDWR);
-    #endif
-                            delete  _clients.at(n);
-                            auto iter = _clients.begin() + n;
-                            _clients.erase(iter);
+                for(size_t n = _clients.size() ,i = 0 ;  n > i  ; ++i){
+                    if( FD_ISSET( _clients.at(i)->sockfd(), &fdRead ) ){
+                        if( RecvData(_clients.at(i)) == -1){
+                         std::cout << "通讯结束,关闭这个套接字" << _clients.at(n)->sockfd() << std::endl;
+                          #ifdef _WIN32
+                              closesocket(_clients.at(i)->sockfd());
+                          #else
+                                shutdown(_clients.at(i)->sockfd(), SHUT_WR);
+                          #endif
+                            auto  it = _clients.begin() + i;
+                            delete (*it);
+                            _clients.erase(it);
+                            --i;
+                            --n;
                         }
                     }
                 }
@@ -451,7 +453,7 @@ int main(void){
                 return -1;
             }
     
-            // 从接收缓冲区 拷贝到 消息缓冲区. (10倍差距),有多少拷贝多少.
+            // 从接收缓冲区 拷贝到 消息缓冲区. (2倍差距),有多少拷贝多少.
             memcpy(pClient->msgBuf() + pClient->getLastPos(), _szRecv, ret);
             pClient->setLastPos(pClient->getLastPos() + static_cast<int>(ret));
     
@@ -461,10 +463,10 @@ int main(void){
                 //判断 消息缓冲区的数据长度大于消息长度
                 if (pClient->getLastPos() >= header->dataLength) {
                     //剩余未处理消息缓存区数据的长度, 先行计算
-                    auto nSize = pClient->getLastPos() - header->dataLength;
+                    auto nSize = header->dataLength;
                     OnNetMsg(pClient->sockfd(), header);    //处理消息
-                    memcpy(pClient->msgBuf(), pClient->msgBuf() + header->dataLength, nSize); // 将第二缓存数据前移
-                    pClient->setLastPos(nSize);     // 需要交还给 第二缓冲区目前存在的数据长度 的数值,也就是未处理的数据
+                    memcpy(pClient->msgBuf(), pClient->msgBuf() + nSize, pClient->getLastPos() - nSize); // 将第二缓存数据前移
+                    pClient->setLastPos(pClient->getLastPos() - nSize);     // 需要交还给 第二缓冲区目前存在的数据长度 的数值,也就是未处理的数据
                 }
                 else {
                     // 消息没有发全,等待数据到达完全再来循环. 剩余数据不足一条完整的消息
@@ -773,7 +775,7 @@ int main(void){
         char  _szRecv[RECV_BUFF_SIZE] = {};
         
         //第二缓冲区, 消息缓冲区
-        char  _szMsggBuf[RECV_BUFF_SIZE * 2] = {};
+        char  _szMsgBuf[RECV_BUFF_SIZE * 2] = {};
         int    _lastPos;    // 第二缓冲区 目前存在的数据长度
         
     public:
@@ -954,19 +956,19 @@ int main(void){
             }
             
             // 从接收缓冲区 拷贝到 消息缓冲区. (10倍差距),有多少拷贝多少.
-            memcpy(_szMsggBuf + _lastPos, _szRecv, ret);
+            memcpy(_szMsgBuf + _lastPos, _szRecv, ret);
             _lastPos += ret;
             
             //判断 消息缓冲区内的数据长度大于消息头, 这时就可以知道当前消息体的长度.
             while (_lastPos >= sizeof(DataHeader)) {
-                DataHeader* header = reinterpret_cast<DataHeader*>(_szMsggBuf);
+                DataHeader* header = reinterpret_cast<DataHeader*>(_szMsgBuf);
                 //判断 消息缓冲区的数据长度大于消息长度
                 if (_lastPos >= header->dataLength) {
                     //剩余未处理消息缓存区数据的长度, 先行计算
                     auto nSize = _lastPos - header->dataLength;
                     OnNetMsg(header);    //处理消息
-                    memcpy(_szMsggBuf, _szMsggBuf + header->dataLength, nSize); // 将第二缓存数据前移
-                    _lastPos = nSize;     // 需要交还给 第二缓冲区目前存在的数据长度 的数值,也就是未处理的数据
+                    memcpy(_szMsgBuf, _szMsgBuf + header->dataLength, nSize); // 将第二缓存数据前移
+                    _lastPos =this->_lastPos - nSize;     // 需要交还给 第二缓冲区目前存在的数据长度 的数值,也就是未处理的数据
                 }
                 else {
                     // 消息没有发全,等待数据到达完全再来循环. 剩余数据不足一条完整的消息
