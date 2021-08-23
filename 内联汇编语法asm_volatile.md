@@ -8,7 +8,9 @@ asm volatile ( "rdtsc" : "=a" (low), "=d" (high) );
 
 ***const volatile 对象***——类型为 const-volatile-限定的 对象，const volatile 对象的非 mutable 子对象，volatile 对象的 const 子对象，或 const 对象的非 mutable volatile 子对象。同时表现为 const 对象与 volatile 对象。
 
+## Volatile作用
 
+有些变量是用**volatile** 关键字声明的。 当两个线程都要用到某一个变量且该变量的值会被改变时，应该用**volatile** 声明，该关键字的**作用**是防止优化编译器把变量从内存装入CPU 寄存器中。
 
 
 

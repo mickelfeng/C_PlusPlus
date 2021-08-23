@@ -1054,7 +1054,7 @@ main(void){
   t2.join();                      // 启动线程,并等待该线程结束,然后主线程继续向下执行
    
   std::thread t3[3];       //创建线程数组. 不用给初始化.
-  for (int i =0; i< 3; i++){
+  for (  int volatile  i =0; i< 3; i++){
     t3[i] = std::thread(cmdThread, i+3 , 'c'+i );     // 循环进行初始化,但是使用的是 匿名对象深拷贝.(效率低)
     t3[i].join();      // 进程挨个启动, 因为是挨个创建的, 如果创建全部之后再调用也行, 但是必须全部调用
   }
@@ -1128,7 +1128,7 @@ public:
         return i;
     }
 private:
-    int i ;
+    atomic_int i ;
 };
 
 atomic<test>  tasTest; // 可以放入对象.
