@@ -72,6 +72,8 @@
 > **查看指定线程的 LWP 号** 
 >
 > - 线程号和线程ID 是有区别的.
+>   - LWP会根据PID进行自增, 并且会占用这个数值, 其他新进程就不能占用这个LWP了, 得使用更大的数值PID.
+>     - 主线程的PID = LWP号
 > - 线程号是给内核看的.
 >   - 查看方式:
 >     - 找到程序的进程ID (首先要找到进程的pid, 然后把下面的pid 替换)
@@ -223,6 +225,7 @@
        const pthread_condattr_t* restrict attr);    // 第二个参数是属性, 给NULL就好了 不需要设置
 // 返回值: 成功将返回0 并将新的条件变量 id 放入 cond 中，否则将返回错误号以指示错误。
 也可以使用这个宏来初始化  PTHREAD_COND_INITIALIZER
+			 pthread_cond_t lock =PTHREAD_COND_INITIALIZER;
 
 销毁一个条件变量
   int pthread_cond_destroy( pthread_cond_t* cond );
@@ -501,7 +504,7 @@ int main(int argc, char* argv[]){
 >
 > 1. **创建互斥锁:  `pthread_mutex_t mutex;`**
 > 2. **初始化这把锁 :**
->     1. **静态分配:`pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER`**
+>     1. **静态分配:`pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;`**
 >     2. **在运行时动态分配:  `pthread_mutex_init(&mutex, NULL);`**
 > 3. **寻找共享资源 :**
 >    1. **操作共享资源之前加锁: `pthread_mutex_lock(&mutex);    //上锁后操作共享资源 ...`**
@@ -670,7 +673,7 @@ restrict，C语言中的一种类型限定符（Type Qualifiers），用于告�
  i.设置锁的属性
       int pthread_rwlockattr_setpshared(pthread_rwlockattr_t* attr, int value);
            // 可被设置的属性只有两种, PTHREAD_PROCESS_PRIVATE, 或 PTHREAD_PROCESS_SHARED
-      // PTHREAD_PROCESS_SHARED  可以访问读/写锁所在的内存的任何进程的任何线程都可以操作该锁。
+      // PTHREAD_PROCESS_SHARED   可以访问读/写锁所在的内存的任何进程都可以操作该锁。
       // PTHREAD_PROCESS_PRIVATE  只有在与初始化读/写锁的线程相同的进程中创建的线程才能操作锁。这是默认值。
            // 成功返回0  , 失败时为 正的 EXXXX 值
 
@@ -727,7 +730,7 @@ int main(int argc, char* argv[]){
     for(int i=0; i<3; ++i){
         pthread_create( &p[i], NULL, write_func, &t[i]);
     }
-    for(int i=3; i<8; ++i){
+    for(int i=3; i<5; ++i){
         pthread_create( &p[i], NULL, read_func, &t[i]);
     }
     //回收子线程pcb
@@ -877,23 +880,24 @@ int pthread_cancel(pthread_t thread);
 	  pthread 参数: 需要杀死的线程ID
 
 范例:
- void Pth(void){
- 	pthread_testcancel();    //开始就调用了.
-	while(1);  // 死循环,什么都不做, 也不会自动退出  
+void* Pth(void*){
+    pthread_testcancel();    //开始就调用了.
+    while(1);  // 死循环,什么都不做, 也不会自动退出
+    return  nullptr;
 }
 int main(void){
-  pthread_t pt ;
-  int ret = pthread_create( &pt, NULL, Pth, NULL);
-  if ( 0 != ret ){
-    printf("error number %d , : %s",ret , strerror(ret));
-    return -1; 
-  }
-  else{
-  	sleep(20);  //等待一下子线程,让他开始运行
-    ptherad_detach(pt);   // 线程分离
-    pthread_cancel(pt);   // 手动杀死这个子线程.
-  }
-  return 0;
+    pthread_t pt ;
+    int ret = pthread_create(&pt, NULL, &Pth, NULL);
+    if ( 0 != ret ){
+        printf("error number %d , : %s",ret , strerror(ret));
+        return -1;
+    }
+    else{
+        sleep(20);  //等待一下子线程,让他开始运行
+        pthread_detach(pt);   // 线程分离
+        pthread_cancel(pt);   // 手动杀死这个子线程.
+    }
+    return 0;
 }
 ```
 
@@ -1093,7 +1097,7 @@ class PP{
 
 > **需要头文件 `<mutex>`**
 
-- 需要一个变量(应该是全局的)  `mutex m;` , 互斥锁(`每个资源一把锁,所有线程共享同一把锁`).
+- 需要一个变量(应该是全局的)  `std::mutex m;` , 互斥锁(`每个资源一把锁,所有线程共享同一把锁`).
   - `m.lock();`  上锁. 应该给临界区上锁.但不应该加在循环上.
   - `m.unlock();` 解锁.
   - **自解锁和自上锁`(可以解决异常)`**:
@@ -1193,6 +1197,47 @@ ug.try_lock() ;  //尝试加锁
 ug.unlock();   //解锁
 ug.owns_lock();   // 当前线程是否拥有锁
 ug.release();    //释放锁
+
+
+1 unique_lock() noexcept;    //可以构造一个空的unique_lock对象，此时并不拥有任何mutex
+
+2 explicit unique_lock (mutex_type& m);//拥有mutex，并调用mutex.lock()对其上锁
+
+3 unique_lock (mutex_type& m, try_to_lock_t tag);//tag=try_lock表示调用mutex.try_lock()尝试加锁
+
+4 unique_lock (mutex_type& m, defer_lock_t tag) noexcept;//tag=defer_lock表示不对mutex加锁，只管理mutex，此时mutex应该是没有加锁的
+
+5 unique_lock (mutex_type& m, adopt_lock_t tag);//tag=adopt_lock表示mutex在此之前已经被上锁，此时unique_locl管理mutex
+
+6 template <class Rep, class Period>
+   unique_lock (mutex_type& m, const chrono::duration<Rep,Period>& rel_time);//在一段时间rel_time内尝试对mutex加锁,mutex.try_lock_for(rel_time)
+
+7 template <class Clock, class Duration>
+   unique_lock (mutex_type& m, const chrono::time_point<Clock,Duration>& abs_time);//mutex.try_lock_until(abs_time)直到abs_time尝试加锁
+
+8 unique_lock (const unique_lock&) = delete;//禁止拷贝构造
+
+9 unique_lock (unique_lock&& x);//获得x管理的mutex，此后x不再和mutex相关，x此后相当于一个默认构造的unique_lock,移动构造函数，具备移动语义,movable but not copyable
+
+说明：其中2和5拥有mutex的所有权，而1和4永远不用有mutex的所有权，3和6及7若尝试加锁成功则拥有mutex的所有权
+
+unique_lock 在使用上比lock_guard更具有弹性，和 lock_guard 相比，unique_lock 主要的特色在于：
+         unique_lock 不一定要拥有 mutex，所以可以透过 default constructor 建立出一个空的 unique_lock。
+         unique_lock 虽然一样不可复制（non-copyable），但是它是可以转移的（movable）。所以，unique_lock 不但可以被函数回传，也可以放到 STL 的 container 里。
+         另外，unique_lock 也有提供 lock()、unlock() 等函数，可以用来加锁解锁mutex，也算是功能比较完整的地方。
+         unique_lock本身还可以用于std::lock参数，因为其具备lock、unlock、try_lock成员函数,这些函数不仅完成针对mutex的操作还要更新mutex的状态。
+
+
+
+/* std::unique_lock其它成员函数 */
+
+~unique_lock();//若unique_lock对象拥有管理的mutex的所有权，mutex没有被销毁或者unlock,那么将执行mutex::unlock()解锁，并不销毁mutex对象。
+mutex_type* mutex() const noexcept;//返回unique_lock管理的mutex指针，但是unique_lock不会放弃对mutex的管理，若unique_lock对mutex上锁了，其有义务对mutex解锁
+bool owns_lock() const noexcept;//当mutex被unique_lock上锁，且mutex没有解锁或析构，返回真，否则返回false
+explicit operator bool() const noexcept;//同上
+
+
+
 ```
 
 
@@ -1237,7 +1282,7 @@ _cv.notify_all();   //唤醒全部陷入阻塞的线程
 class CELLSemaphore
 {
 public:
-	CELLSemaphore():_wait(false), _wakeup(0){}
+	CELLSemaphore():_wait(0), _wakeup(0){}
 	~CELLSemaphore() {}
 
 	//进入阻塞

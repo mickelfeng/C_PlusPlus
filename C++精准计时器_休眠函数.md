@@ -81,8 +81,84 @@ std::chrono::time_point<std::chrono::high_resolution_clock> _begin;  //时间点
 */
 };
 
-#endif /* __CELLTIMESTAMP_HPP__ */
+
+
+
+int main(void)
+{
+    std::cout << "OK" << std::endl;
+    std::chrono::milliseconds t(3000);
+    std::this_thread::yield();
+    std::this_thread::sleep_for(t);
+//    std::this_thread::yield();
+    std::cout << "OK" << std::endl;
+}
+
 ```
+
+
+
+```c++
+关于c++中chrono函数的使用
+
+　　这个库是c++11定义出来的关于处理时间的库，有了它处理时间问题就会非常方便了。我们在这里简单介绍一下这个库的一些常用方法。
+
+　　1、duration_cast（这个主要实现的功能就是可以将单位进行转换，比如说我们获取到的系统时间可能是毫秒，但是我们要把他换算成秒怎么办，就用这个）。
+
+　　2、system_clock::now（这个函数的主要目的就是获取到当前系统时间，注意这个时间是当前时间与1970年1月1之间的差值，单位是time_point）
+
+　　3、time_since_porch (这个函数也是当前时间与1970年1月1日之间的差值，单位是duration)
+
+　　4、localtime（间隔）（这个函数可以将当前时间与1970年的差值，转换成包含今天年月日的结构体，不过注意，传进去的一定是秒）
+
+       5、strftime函数（这个函数可以将结构体指针转换成包含时间格式的字符串数组）
+
+　　6、to_time_t（将timepoint时间转换成time_t）
+```
+
+```c++
+时间函数
+
+　　首先我们说一下，时间到底有啥用，其实我想了想，其用途无非就是两点，第一获取到当前的年月日时分秒，第二就是计算两段代码相隔的时间。所以我就着重说这两部分。
+
+　　1、获取到当前时间的年月日
+
+　　　　无论是什么函数，他的流程一定是这样的。获取到time_point值，然后获取到tm的值，最后获取到年月日时分秒。
+
+　　　　1、先说第一种方法　　　
+
+         auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();  //获取到time_point的值并将其转换成秒
+　　　　　 ts = localtime(&now)   //获取到当前的tm值
+　　　　
+         int year = ts.tm_year + 1900;
+         int month = ts.tm_mon + 1;
+         int day = ts.tm_mday;
+          int hour = ts.tm_hour;
+         int minute = ts.tm_min;
+         int second = ts.tm_sec;
+　　　　　获取到当前年月日时分秒的值
+
+　　　　2、再说第二种方法
+         auto tn = std::chrono::system_clock::now();   // 获取到time_point
+         time_t now1 = std::chrono::system_clock::to_time_t(tn);  // 获取time_t的值
+         ts = localtime(&now);   // 获取tm的值
+         const char *fmt = "%Y-%m-%d %H:%M:%S";
+         strftime(buf, sizeof(buf), fmt, ts);   // 将其转换成字符串的形式
+
+
+　　　3、获取到当前程序运行的时间
+　　　　
+　　　　　　
+auto t0 = std::chrono::system_clock::now();
+    j++;
+    auto time2 = std::chrono::system_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>
+                   (std::chrono::system_clock::now() - t0).count()<<std::endl;
+
+　　通过得到时间戳相减得到最终的值，另外我测的话一行代码时间58ns，所以只好设置na秒级别了。
+```
+
+
 
 
 
@@ -1235,6 +1311,40 @@ int main(void){
 std::chrono::milliseconds t(100);
 // 启动一个休眠, c++ 提供的, 休眠 毫秒
 std::this_thread::sleep_for(t);
+//当前线程放弃执行，操作系统调度另一线程继续执行
+std::this_thread::yield();
+
+std::this_thread::yield：　当前线程放弃执行，操作系统调度另一线程继续执行。即当前线程将未使用完的“CPU时间片”让给其他线程使用，等其他线程使用完后再与其他线程一起竞争"CPU"。调用线程放弃执行，回到准备状态，重新分配cpu资源。所以调用该方法后，可能执行其他线程，也可能还是执行该线程
+  
+std::this_thread::sleep_for：　表示当前线程休眠一段时间，休眠期间不与其他线程竞争CPU，根据线程需求，等待若干时间。
+
+  
+  
+关于sleep_for，sleep以及yield函数三者的区别 
+	关于sleep_for，它还有一个类似的函数，叫yield，他的作用域，参数和sleep_for是一样的，它的函数原型是这样的：
+		std::this_thread::yield：　当前线程放弃执行，操作系统调度另一线程继续执行。即当前线程将未使用完的“CPU时间片”让给其他线程使用，等其他线程使用完后再与其他线程一起竞争"CPU"。
+	另外我们在系统中还有一个阻塞函数sleep函数，所以我们说一说三者的区别。
+	我们先来说sleep函数，我们有两点要说明：
+			1、sleep函数是系统函数，换句话说它不需要c++11支持，只要有编译器就能找到这个函数。
+  		2、sleep函数是进程阻塞函数，换句话说一旦调用这个函数，当前进程当中所有的线程全部阻塞。
+  
+ 
+  
+#include <iostream>
+#include <unistd.h>
+#include <thread>
+#include <chrono>
+
+int main(void)
+{
+    std::cout << "OK" << std::endl;
+    std::chrono::milliseconds t(3000);
+    t+= t;
+    std::this_thread::sleep_for(t);
+//    std::this_thread::yield();
+    std::cout << "OK" << std::endl;
+}
+
 ```
 
 

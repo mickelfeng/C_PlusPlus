@@ -158,5 +158,25 @@ int main(void)
 
 
 
+## Mac下的内联汇编
+
+```c
+// 使用inline方式将函数在调用处强制展开，防止被hook和追踪符号
+static __attribute__((always_inline)) void _tswitch() {
+// 判断是否是ARM64处理器指令集
+#ifdef __arm64__
+    // volatile修饰符能够防止汇编指令被编译器忽略
+    __asm__ __volatile__(
+                         "mov x0, #31\n"
+                         "mov x1, #0\n"
+                         "mov x2, #0\n"
+                         "mov x3, #0\n"
+                         "mov x16, #26\n"
+                         "svc #0x80\n"
+                         );
+#endif
+}
+```
+
 
 

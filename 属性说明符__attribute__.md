@@ -78,9 +78,9 @@ C++ 标准仅定义下列属性。
 | `[[carries_dependency]]`(C++11)                           | 指示释放消费 [std::memory_order](../atomic/memory_order.html) 中的依赖链传入和传出该函数。 |
 | `[[deprecated]]`(C++14) `[[deprecated("reason")]]`(C++14) | 指示允许使用声明有此属性的名称或实体，但因 *reason* 而不鼓励使用。 |
 | `[[fallthrough]]`(C++17)                                  | 指示从前一 case 标号直落是有意的，而在发生直落时给出警告的编译器不应该为此诊断。 |
-| `[[nodiscard]]`(C++17) `[[nodiscard("reason")]]`(C++20)   | 若返回值被舍弃，则鼓励编译器发布警告。                       |
-| `[[maybe_unused]]`(C++17)                                 | 压制编译器在未使用实体上的警告，若存在。                     |
-| `[[likely]]`(C++20) `[[unlikely]]`(C++20)                 | 指示编译器应该针对通过某语句的执行路径比任何其他执行路径更可能或更不可能的情况进行优化。 |
+| `[[nodiscard]]`(C++17) ,`[[nodiscard("reason")]]`(C++20)  | **若返回值被舍弃，则鼓励编译器发布警告。**                   |
+| `[[maybe_unused]]`(C++17)                                 | **抑制编译器在未使用实体上的警告，若存在。**                 |
+| `[[likely]]`(C++20), `[[unlikely]]`(C++20)                | **指示编译器应该针对通过某语句的执行路径比任何其他执行路径更可能或更不可能的情况进行优化。** |
 | `[[no_unique_address]]`(C++20)                            | 指示非静态数据成员不需要拥有不同于其类的所有其他非静态数据成员的地址。 |
 | `[[optimize_for_synchronized]]`(TM TS)                    | 指示应该针对来自 [synchronized 语句](transactional_memory.html)的调用来优化该函数定义 |
 

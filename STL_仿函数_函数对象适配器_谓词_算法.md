@@ -436,7 +436,7 @@ string substr(int pos = 0, int n = npos)const; // 截取返回 从 [pos 位置�
 string s1 = "abcde";
 string s2;
 s2 = s1.substr(1,3);   
-    // 返回第1个位置到第三个位置上的字符串,在后面添加\0
+    // 返回第1个位置后3个字符,在后面添加\0
     //  s2 = bcd\0
     //  [1, 3)   包括1  但不包括3
 ```
@@ -1095,7 +1095,7 @@ insert(pos,beg,end);  // 在pos 位置插入 [beg,end) 区间的数据, 无返�
 clear(无参数);  //删除容器的所有数据.
 erase(beg,end);  // 删除 [beg,end) 区间的数据, 返回下一个数据的位置
 erase(pos) ;   // 删除 pos 位置的数据, 返回下一个数据的位置.
-remove(elem);  // 删除容器中所有与 elem 值匹配的元素.
+remove(elem);  // 将容器中所有与 elem 值匹配的元素,移动到末尾
 ```
 
 
@@ -1503,6 +1503,50 @@ void test03(){
         cout << "找到了 " << (*ti2).id<< " "<< (*ti2).age << endl;
     }
 }
+```
+
+```c++
+#include <iostream>
+#include <set>
+#include <algorithm>
+void Dispset(std::set<int> &myset)
+{
+    std::set<int>::iterator it;
+    for (it=myset.begin(); it!=myset.end(); ++it) {
+        printf("%d ",*it);
+    }
+    printf("\n");
+}
+
+
+int main(int argc, const char * argv[]) {
+
+    std::set<int> set1, set2, set3;
+    int a[] = {4, 1, 2, 6};
+    int n = sizeof(a)/sizeof(a[0]);
+    set1.insert(a, a+n);
+    
+    int b[] = {1, 5, 3, 2, 4};
+    int m = sizeof(b)/sizeof(b[0]);
+    set2.insert(b, b+m);
+    
+    std::set<int>::iterator it3;
+    printf("set1: ");Dispset(set1);
+    printf("set2: ");Dispset(set2);
+    std::insert_iterator< std::set<int> > insert_it (set3, set3.begin()); // 插入迭代器
+    std::set_union(set1.begin(), set1.end(), set2.begin(), set2.end(), insert_it);
+    printf("并集: "); Dispset(set3);
+    set3.clear();
+    std::set_intersection(set1.begin(), set1.end(), set2.begin(), set2.end(), insert_it);
+    printf("交集: "); Dispset(set3);
+    set3.clear();
+    
+    std::set_difference(set1.begin(), set1.end(), set2.begin(), set2.end(), insert_it);
+    printf("差集: "); Dispset(set3);
+    set3.clear();
+    return 0;
+}
+
 ```
 
 

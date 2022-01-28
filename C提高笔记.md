@@ -53,7 +53,7 @@ const char *fmt：可变参数
 */
 /************************************************************************/
 //实际使用的Level
-extern int  LogLevel[5];
+extern int  LogLevel[6];
 void ITCAST_LOG(const char *file, int line, int level, int status, const char *fmt, ...);
 
 --------------------- 
@@ -69,6 +69,7 @@ void ITCAST_LOG(const char *file, int line, int level, int status, const char *f
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 #include "ItcastLog.h"
  
 #define ITCAST_DEBUG_FILE_	"socketclient.log"
@@ -202,7 +203,7 @@ void ITCAST_LOG(const char *file, int line, int level, int status, const char *f
 	return;
 }
  
-void main()
+int main()
 {
 	int rv = -3;
 	ITCAST_LOG(__FILE__, __LINE__, LogLevel[4], rv, "func cltSocketRev2: (buflen == NULL) [%d]", rv);
