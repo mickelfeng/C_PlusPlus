@@ -139,6 +139,7 @@ int main(void)
 　　　　　获取到当前年月日时分秒的值
 
 　　　　2、再说第二种方法
+       //std::chrono::system_clock::time_point tn = std::chrono::system_clock::now();   // 获取到time_point
          auto tn = std::chrono::system_clock::now();   // 获取到time_point
          time_t now1 = std::chrono::system_clock::to_time_t(tn);  // 获取time_t的值
          ts = localtime(&now);   // 获取tm的值
