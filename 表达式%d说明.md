@@ -211,6 +211,8 @@ printf("%05d\n",1000);    //前面补0
 
 输出结果为：![img](assets/MBXY-CR-a120d245aa5fa100fe9d3788a807eed2.png)
 
+
+
 ## 2.3 输出最小宽度（width）
 
 用十进制整数来表示输出的最少位数。若实际位数多于指定的宽度，则按实际位数输出，若实际位数少于定义的宽度则补以空格或0。width的可能取值如下：
@@ -262,6 +264,14 @@ abcdefgh
 
 因为 Markdown 表格不支持单元格合并，背景颜色等样式，所以直接引用C++ reference.printf http://www.cplusplus.com/reference/cstdio/printf/?kw=printf)的表格。
 ![img](assets/MBXY-CR-9fe0e2d6bc9817c6eacdc701f21ac1bc.png)
+
+
+
+
+
+
+
+
 
 **注意：** 黄色背景行标识的类型长度说明符和相应的数据类型是C99引入的。
 
