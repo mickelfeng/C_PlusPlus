@@ -9,6 +9,7 @@
 - [enum枚举类型](#enum枚举类型)
 - [运算符和操作符的区别](#运算符和操作符的区别)
 - [类型转换](#类型转换)
+- [initializer_list列表初始化](#initializer_list列表初始化)
 - [类](#类)
   - [构造函数与析构函数](#构造函数与析构函数)
   - [static属性的构造函数和成员以及在private中的构造函数](#static属性的构造函数和成员以及在private中的构造函数)
@@ -27,6 +28,8 @@
   - [抽象类](#抽象类)
     - [面向抽象层编程](#面向抽象层编程)
   - [重载,重写,重定义](#重载,重写,重定义)
+  - [虚继承](#虚继承)
+  - [虚继承、虚函数](#虚继承、虚函数)
 - [普通函数重载](#普通函数重载)
 - [占位参数\(也称默认实参\)](#占位参数-也称默认实参)
 - [inline 内联函数](#inline内联函数)
@@ -35,8 +38,16 @@
 - [nullptr 和 NULL的区别](#nullptr和NULL的区别)
 - [智能指针](#智能指针)
 - [命名空间](#命名空间)
+  - [using声明](#using声明)
+    - [构造函数的using声明](#构造函数的using声明)
+    - [using指示](#using指示)
+    - [尽量少使用using指示污染命名空间](#尽量少使用using指示污染命名空间)
+    - [using使用](#using使用)
+- [::范围解析运算符](#::范围解析运算符)
 - [静态联编和动态联编](#静态联编和动态联编)
 - [内存分段](#内存分段)
+- [decltype](#decltype)
+- [typeid在运行时获得对象的类型](#typeid在运行时获得对象的类型)
 - 
 
 
@@ -67,6 +78,8 @@
 - 
 
 
+
+==**面向对象三大特征 —— 封装、继承、多态**==
 
 
 
@@ -130,6 +143,9 @@
 > - <u>**左值 可以在多行使用, 如果不是const的左值,那么就可以随意修改,如果是const  则不可以修改**</u>
 > -  <u>**右值 就是一个临时变量, 只能在当前行使用,而且不可以进行直接的引用.`(在C++11标准中可以&&来对引用,取地址)`**</u>
 > -  **引用不是对象；它们不必占用存储，尽管若需要分配存储以实现所需语义（例如，引用类型的非静态数据成员通常会增加类的大小，量为存储内存地址所需），则编译器会这么做。**
+> - 右值引用可实现转移语义（Move Sementics）和精确传递（Perfect Forwarding），它的主要目的有两个方面：
+>   - 消除两个对象交互时不必要的对象拷贝，节省运算存储资源，提高效率。
+>   - 能够更简洁明确地定义泛型函数。
 
 - **关于引用中的左值引用和右值引用, & 一个引用符号是左值引用, && 是右值引用,这个右值引用解决了模版的一些问题,如果遇到问题可以尝试**
 - <u>**关于引用中的左值引用和右值引用的区分:**</u>
@@ -148,6 +164,14 @@
 > // 当然这是有重载的时候发生的情况.
 > ```
 
+```cpp
+std::remove_reference<decltype(*参数值)>::type   删除引用，  type 是个类型
+```
+
+- **引用折叠**
+  - `X& &`、`X& &&`、`X&& &` 可折叠成 `X&`
+  - `X&& &&` 可折叠成 `X&&`
+
 
 
 ## 引用的本质
@@ -165,7 +189,7 @@
 > - **还有种比较绕口的: (就是一个指针的引用)**
 >
 >   - ```c++
->     struct cer { int i;};  //一个结构
+>     struct cer { int i;};  //一个结构体
 >     int fun(struct cer* &tmp)  // 一个函数  形参是结构类型的指针的引用
 >       {  tmp = (struct cer*)malloc(sizeof(struct cer)); } // 直接就可以当申请内存当指针
 >     ```
@@ -173,8 +197,6 @@
 
 
 ## const类型
-
-
 
 1. **const 类型的常量会在 常量区的符号表创建,而不是在栈区.没有地址(而且还会在编译阶段把常量换成值)**
    1. **通常C++编译器并不为const创建存储空间，相反它把这个定义保存在它的[符号表](http://baike.baidu.com/link?url=gYnEQDQ3o8mEj0xHnWvWMQfrraYCG1iVvntmoXcI1htWc14_Z5WCa6pVWR3UUUxr6n-CA9PGjK77Czc0MAFigK)里，但extern强制进行了存储空间分配，取const地址也会**
@@ -251,6 +273,16 @@ enum ppd { cmd_l , cmd_t };  // 默认 cmd_l = 0 ,cmd_t= 1
            ......
         }
     }
+
+限定作用域的枚举类型
+  enum class open_modes { input, output, append };
+//   enum class能够有效对枚举作用域进行限定，避免了枚举成员的重定义。
+
+不限定作用域的枚举类型
+  enum color { red, yellow, green };
+	enum { floatPrec = 6, doublePrec = 10 };
+
+
 ```
 
 
@@ -332,6 +364,69 @@ enum ppd { cmd_l , cmd_t };  // 默认 cmd_l = 0 ,cmd_t= 1
     C& c4 = static_cast<C&>(a3);  // 父类引用可以转换为子类引用 (不安全)
     A& a4 = static_cast<A&>(c3);  // 子类引用也可以转换为父类引用
 ```
+
+
+
+
+
+## initializer_list列表初始化
+
+用花括号初始化器列表初始化一个对象，其中对应构造函数接受一个 `std::initializer_list` 参数.
+
+initializer_list 使用
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <initializer_list>
+ 
+template <class T>
+struct S {
+    std::vector<T> v;
+    S(std::initializer_list<T> l) : v(l) {
+         std::cout << "constructed with a " << l.size() << "-element list\n";
+    }
+    void append(std::initializer_list<T> l) {
+        v.insert(v.end(), l.begin(), l.end());
+    }
+    std::pair<const T*, std::size_t> c_arr() const {
+        return {&v[0], v.size()};  // 在 return 语句中复制列表初始化
+                                   // 这不使用 std::initializer_list
+    }
+};
+ 
+template <typename T>
+void templated_fn(T) {}
+ 
+int main()
+{
+    S<int> s = {1, 2, 3, 4, 5}; // 复制初始化
+    s.append({6, 7, 8});      // 函数调用中的列表初始化
+ 
+    std::cout << "The vector size is now " << s.c_arr().second << " ints:\n";
+ 
+    for (auto n : s.v)
+        std::cout << n << ' ';
+    std::cout << '\n';
+ 
+    std::cout << "Range-for over brace-init-list: \n";
+ 
+    for (int x : {-1, -2, -3}) // auto 的规则令此带范围 for 工作
+        std::cout << x << ' ';
+    std::cout << '\n';
+ 
+    auto al = {10, 11, 12};   // auto 的特殊规则
+ 
+    std::cout << "The list bound to auto has size() = " << al.size() << '\n';
+ 
+//    templated_fn({1, 2, 3}); // 编译错误！“ {1, 2, 3} ”不是表达式，
+                             // 它无类型，故 T 无法推导
+    templated_fn<std::initializer_list<int>>({1, 2, 3}); // OK
+    templated_fn<std::vector<int>>({1, 2, 3});           // 也 OK
+}
+```
+
+
 
 
 
@@ -1390,6 +1485,7 @@ temp = 10
 > - <u>**没有 `virtual` 关键字的函数: 不允许 子类 重新定义这个函数**</u>
 > - <u>**有 `virtual` 关键字的函数 :  希望子类进行对该函数的重定义,  但该函数已有默认定义**</u>
 > - <u>**有 `virtual` 关键字的函数`(没有定义,也就是 纯虚函数 )`: 子类必须对这种函数重定义. `(pure virtual)`**</u>
+> - 虚析构函数是为了解决基类的指针指向派生类对象，并用基类的指针删除派生类对象。
 
 
 
@@ -1628,9 +1724,30 @@ int main(void){     // 主函数开始
   - **<u>虚函数重写(也就是重写):</u>**
     -  **如果父类的虚函数,被子类重写,就是虚函数重写,这个函数会发生多态.(函数头必须一模一样)**
   - <u>**重写:**</u>
-    - **也是发生在两个不同的类中,一个是父类,一个是子类,函数必须是虚函数,才可以发生重写.(也就只能是类了)**
+    - **也是发生在两个不同的类中,一个是父类,一个是子类,函数必须是虚函数,才可以发生重写.(也就只能是子类了)**
 
 
+
+
+
+### 虚继承
+
+虚继承用于解决多继承条件下的菱形继承问题（浪费存储空间、存在二义性）。
+
+底层实现原理与编译器相关，一般通过**虚基类指针**和**虚基类表**实现，每个虚继承的子类都有一个虚基类指针（占用一个指针的存储空间，4字节）和虚基类表（不占用类对象的存储空间）（需要强调的是，虚基类依旧会在子类里面存在拷贝，只是仅仅最多存在一份而已，并不是不在子类里面了）；当虚继承的子类被当做父类继承时，虚基类指针也会被继承。
+
+实际上，vbptr 指的是虚基类表指针（virtual base table pointer），该指针指向了一个虚基类表（virtual table），虚表中记录了虚基类与本类的偏移地址；通过偏移地址，这样就找到了虚基类成员，而虚继承也不用像普通多继承那样维持着公共基类（虚基类）的两份同样的拷贝，节省了存储空间。
+
+### 虚继承、虚函数
+
+- 相同之处：都利用了虚指针（均占用类的存储空间）和虚表（均不占用类的存储空间）
+- 不同之处：
+  - 虚继承
+    - 虚基类依旧存在继承类中，只占用存储空间
+    - 虚基类表存储的是虚基类相对直接继承类的偏移
+  - 虚函数
+    - 虚函数不占用存储空间
+    - 虚函数表存储的是虚函数地址
 
 
 
@@ -1762,9 +1879,27 @@ print (const A& a){
     delete p;        // 释放一个int
     delete[] array;    //释放一个数组,必须要这样写
     delete tp;     // 释放一个类的指针,并且触发析构函数
+
+定位 new（placement new）允许我们向 new 传递额外的地址参数，从而在预先指定的内存区域创建对象。
+  new (place_address) type
+	new (place_address) type (initializers)
+	new (place_address) type [size]
+	new (place_address) type [size] { braced initializer list }
+	
+	范例：
+    // 基础地址
+    int *base = new int(1);
+    
+    //新地址
+    int * p = new (base + sizeof(int*)) int (2);
+    std::cout << *p << std::endl;
+    
+    delete base;
+    delete(p);
 ```
 
-
+- `place_address` 是个指针
+- `initializers` 提供一个（可能为空的）以逗号分隔的初始值列表
 
 
 
@@ -1851,6 +1986,107 @@ namespace mainp{        // 自定义一个命名空间.
 };
 ```
 
+### using声明
+
+一条 `using 声明` 语句一次只引入命名空间的一个成员。它使得我们可以清楚知道程序中所引用的到底是哪个名字。如：
+
+```cpp
+using namespace_name::name;
+```
+
+#### 构造函数的using声明
+
+在 C++11 中，派生类能够重用其直接基类定义的构造函数。
+
+```cpp
+class Derived : Base {
+public:
+    using Base::Base;
+    /* ... */
+};
+
+如上 using 声明，对于基类的每个构造函数，编译器都生成一个与之对应（形参列表完全相同）的派生类构造函数。生成如下类型构造函数：
+  
+Derived(parms) : Base(args) { }
+
+```
+
+#### using指示
+
+`using 指示` 使得某个特定命名空间中所有名字都可见，这样我们就无需再为它们添加任何前缀限定符了。如：
+
+```cpp
+using namespace_name name;
+```
+
+#### 尽量少使用using指示污染命名空间
+
+> 一般说来，使用 using 命令比使用 using 编译命令更安全，这是由于它**只导入了指定的名称**。如果该名称与局部名称发生冲突，编译器将**发出指示**。using编译命令导入所有的名称，包括可能并不需要的名称。如果与局部名称发生冲突，则**局部名称将覆盖名称空间版本**，而编译器**并不会发出警告**。另外，名称空间的开放性意味着名称空间的名称可能分散在多个地方，这使得难以准确知道添加了哪些名称。
+
+#### using使用
+
+尽量少使用 `using 指示`
+
+```cpp
+using namespace std;
+```
+
+应该多使用 `using 声明`
+
+```cpp
+int x;
+std::cin >> x ;
+std::cout << x << std::endl;
+```
+
+或者
+
+```cpp
+using std::cin;
+using std::cout;
+using std::endl;
+int x;
+cin >> x;
+cout << x << endl;
+```
+
+
+
+## ::范围解析运算符
+
+- 分类:
+  - 全局作用域符（`::name`）：用于类型名称（类、类成员、成员函数、变量等）前，表示作用域为全局命名空间
+  - 类作用域符（`class::name`）：用于表示指定类型的作用域范围是具体某个类的
+  - 命名空间作用域符（`namespace::name`）:用于表示指定类型的作用域范围是具体某个命名空间的
+
+```cpp
+int count = 11;         // 全局（::）的 count
+
+class A {
+public:
+    static int count;   // 类 A 的 count（A::count）
+};
+int A::count = 21;
+
+void fun()
+{
+    int count = 31;     // 初始化局部的 count 为 31
+    count = 32;         // 设置局部的 count 的值为 32
+}
+
+int main() {
+    ::count = 12;       // 测试 1：设置全局的 count 的值为 12
+
+    A::count = 22;      // 测试 2：设置类 A 的 count 为 22
+
+    fun();                // 测试 3
+
+    return 0;
+}
+```
+
+
+
 
 
 
@@ -1907,4 +2143,136 @@ else {};          // 不会出现编译时就直接确定的情况, 这个时候
 
 
 
+
+## decltype
+
+decltype 它和 auto 的功能一样，都用来在编译时期进行自动类型推导
+
+decltype 关键字用于检查实体的声明类型或表达式的类型及值分类。语法：
+
+```cpp
+decltype ( expression )
+```
+
+表达式可以有“对象类型左值/亡值/纯右值". 
+对其使用 decltype 的结果分别是 左值引用类型/右值引用类型/对象类型. 
+
+```cpp
+// 尾置返回允许我们在参数列表之后声明返回类型
+template <typename It>
+auto fcn(It beg, It end) -> decltype(*beg)
+{
+    // 处理序列
+    return *beg;    // 返回序列中一个元素的引用
+}
+// 为了使用模板参数成员，必须用 typename
+template <typename It>
+auto fcn2(It beg, It end) -> typename std::remove_reference<decltype(*beg)>::type
+{
+    // 处理序列
+    return *beg;    // 返回序列中一个元素的拷贝
+}
+
+// remove_reference<decltype(*参数值)>::type   删除引用，  type 是个类型
+int main(void)
+{
+    int *i = 0;
+    int *a = 0;
+    fcn(i ,a );
+    fcn2(i, a);
+    
+    return 0;
+}
+```
+
+
+
+## typeid在运行时获得对象的类型
+
+#### typeid
+
+- typeid 运算符允许在运行时确定对象的类型
+- type_id 返回一个 type_info 对象的引用
+- 如果想通过基类的指针获得派生类的数据类型，基类必须带有虚函数
+- 只能获取对象的实际类型
+
+#### type_info
+
+- type_info 类描述编译器在程序中生成的类型信息。 此类的对象可以有效存储指向类型的名称的指针。 type_info 类还可存储适合比较两个类型是否相等或比较其排列顺序的编码值。 类型的编码规则和排列顺序是未指定的，并且可能因程序而异。
+- 头文件：`typeinfo`
+
+typeid、type_info 使用
+
+```cpp
+#include <iostream>
+#include <typeinfo>
+#include <string>
+using namespace std;
+
+class Flyable                       // 能飞的
+{
+public:
+    virtual void takeoff() = 0;     // 起飞
+    virtual void land() = 0;        // 降落
+};
+class Bird : public Flyable         // 鸟
+{
+public:
+    void foraging() {}           // 觅食
+    virtual void takeoff() {}
+    virtual void land() {}
+    virtual ~Bird(){}
+};
+class Plane : public Flyable        // 飞机
+{
+public:
+    void carry() {}              // 运输
+    virtual void takeoff(){}
+    virtual void land() {}
+};
+
+//class type_info
+//{
+//public:
+//    const char* name() const;
+//    bool operator == (const type_info & rhs) const;
+//    bool operator != (const type_info & rhs) const;
+//    int before(const type_info & rhs) const;
+//    virtual ~type_info();
+//private:
+//
+//};
+
+void doSomething(Flyable *obj)                 // 做些事情
+{
+    obj->takeoff();
+    std::string  asdp(typeid(*obj).name());
+    cout << typeid(*obj).name() << endl;        // 输出传入对象类型（"class Bird" or "class Plane"）
+
+    if(typeid(*obj) == typeid(Bird))            // 判断对象类型
+    {
+        Bird *bird = dynamic_cast<Bird *>(obj); // 对象转化
+        bird->foraging();
+    }
+
+    obj->land();
+}
+
+int main(){
+    Bird *b = new Bird();
+    Plane *p= new Plane();
+    doSomething(b);
+    doSomething(p);
+    delete b;
+    b = nullptr;
+    return 0;
+}
+/*
+输出如下：
+4Bird
+5Plane
+
+前面的数字代表该类型名称有多少个字节长度
+*/
+```
 
