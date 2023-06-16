@@ -16,6 +16,7 @@
   - a :表示寄存器 eax、ax、al
   - b :表示寄存器 ebx、bx、bl
   - c :表示寄存器 ecx、cx、cl
+  - d :表示寄存器 edx、dx、dl
   - D :表示寄存器 edi、di
   - S :表示寄存器 esi、si
   - q :表示任意这4个寄存器之一 eax、ebx、ecx、edx
