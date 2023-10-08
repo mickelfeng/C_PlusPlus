@@ -24,7 +24,7 @@
   - [C-单个线程退出,而且不影响其他线程的函数 pthread_exit](#C-单个线程退出,而且不影响其他线程的函数pthread_exit)
   - [C-杀死或取消线程  ptherad_cancel](#C-杀死或取消线程ptherad_cancel)
   - [C-回收子线程资源阻塞等待线程退出,获取线程退出状态  pthread_join](#C-回收子线程资源阻塞等待线程退出,获取线程退出状态pthread_join)
-  - [C-设置线程分离 ptherad_detach](#C-设置线程分离ptherad_detach)
+  - [C-设置线程分离 pthread_detach](#C-设置线程分离pthread_detach)
   - [C-线程属性](#C-线程属性)
 - [在Cpp中的多线程](#在Cpp中的多线程)
   - [C++中的创建线程和头文件](#C++中的创建线程和头文件)
@@ -926,13 +926,13 @@ int pthread_join(pthread_t* tid, void** status);
 
 
 
-### C-设置线程分离ptherad_detach
+### C-设置线程分离pthread_detach
 
 - **一旦设置了线程分离, 那么它就会自动回收子线程的pcb**
 - **分离之后,子线程会自己回收本身的pcb, 不需要父进程的参与回收.**
 
 ```c
-int ptherad_detach(pthread_t pthread);
+int pthread_detach(pthread_t pthread);
 	
 	 pthread 参数 : 需要分离的线程ID
 
@@ -940,7 +940,7 @@ int ptherad_detach(pthread_t pthread);
 直接设置线程分离的例子:
         pthread_t pthid;
         pthread_create(pthid, NULL, myfunc, NULL);
-        ptherad_detach(pthid);
+        pthread_detach(pthid);
         // 完成 线程分离了 , 不需要设置属性
 ```
 
